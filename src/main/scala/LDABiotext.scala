@@ -13,7 +13,6 @@ import java.util.Locale
 
 import org.apache.log4j.{Level, Logger}
 import scopt.OptionParser
-
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.feature.{CountVectorizer, CountVectorizerModel, RegexTokenizer, StopWordsRemover}
@@ -21,8 +20,8 @@ import org.apache.spark.ml.linalg.{Vector => MLVector}
 import org.apache.spark.mllib.clustering.{DistributedLDAModel, EMLDAOptimizer, LDA, OnlineLDAOptimizer}
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{Row, SparkSession}
-import org.apache.spark.sql.functions.{input_file_name, col, concat_ws, collect_list, split, regexp_replace}
+import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+import org.apache.spark.sql.functions._
 
 
 object LDABiotext {
@@ -190,7 +189,8 @@ object LDABiotext {
   
     val df_lines = spark.read.textFile(path).withColumnRenamed("value", "content").withColumn("fileName", input_file_name())
     val df_agg = df_lines.groupBy(col("fileName")).agg(concat_ws(" ",collect_list(df_lines.col("content"))).as("content"))
-    val df_body = df_agg.withColumn("_tmp", split(col("content"), "====")).select($"_tmp".getItem(2).as("docs")).drop("_tmp")
+    val df_notnull: DataFrame = df_agg.where(size($"docs")>1)
+    val df_body = df_notnull.withColumn("_tmp", split(col("content"), "====")).select($"_tmp".getItem(2).as("docs")).drop("_tmp")
 
     val df = df_body.withColumn("docs", regexp_replace(col("docs"), """([?.,;!:\\(\\)]|\p{IsDigit}{4}|\b\p{IsLetter}{1,2}\b)\s*""", " "))
 
