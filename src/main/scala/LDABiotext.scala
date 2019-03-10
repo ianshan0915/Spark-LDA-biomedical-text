@@ -22,7 +22,7 @@ import org.apache.spark.mllib.clustering.{DistributedLDAModel, EMLDAOptimizer, L
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{Row, SparkSession}
-import org.apache.spark.sql.functions.{input_file_name, col, concat_ws, collect_list}
+import org.apache.spark.sql.functions.{input_file_name, col, concat_ws, collect_list, split}
 
 
 object LDABiotext {
@@ -188,8 +188,9 @@ object LDABiotext {
     // First, read one document per line in each text file, keep the filename.
     // Then aggregate the lines by filename (paper id)
   
-    val df_lines = spark.read.textFile(path).withColumnRenamed("value", "docs").withColumn("fileName", input_file_name())
-    val df = df_lines.groupBy(col("fileName")).agg(concat_ws("",collect_list(df_lines.col("docs"))).as("docs"))
+    val df_lines = spark.read.textFile(path).withColumnRenamed("value", "content").withColumn("fileName", input_file_name())
+    val df_agg = df_lines.groupBy(col("fileName")).agg(concat_ws("",collect_list(df_lines.col("content"))).as("content"))
+    val df = df_agg.withColumn("_tmp", split(col("content"), "====")).select($"_tmp".getItem(2).as("docs")).drop("_tmp")
 
     val customizedStopWords: Array[String] = if (stopwordFile.isEmpty) {
       Array.empty[String]
@@ -202,13 +203,12 @@ object LDABiotext {
       .setOutputCol("rawTokens")
     val stopWordsRemover = new StopWordsRemover()
       .setInputCol("rawTokens")
-      .setOutputCol("tokens")
+      .setOutputCol("tokens")    
     stopWordsRemover.setStopWords(stopWordsRemover.getStopWords ++ customizedStopWords)
     val countVectorizer = new CountVectorizer()
       .setVocabSize(vocabSize)
       .setInputCol("tokens")
       .setOutputCol("features")
-
     val pipeline = new Pipeline()
       .setStages(Array(tokenizer, stopWordsRemover, countVectorizer))
 
