@@ -24,6 +24,8 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{Row, SparkSession, DataFrame}
 import org.apache.spark.sql.functions.{input_file_name, col, concat_ws, collect_list, split, regexp_replace}
 
+import com.johnsnowlabs.nlp.base._
+import com.johnsnowlabs.nlp.annotator._
 
 object LDABiotext {
 
@@ -206,7 +208,7 @@ object LDABiotext {
     // First, read one document per line in each text file, keep the filename.
     // Then aggregate the lines by filename (paper id)
   
-    val df: DataFrame = if(source=="pmc") {
+    val df_raw: DataFrame = if(source=="pmc") {
       val df_lines = spark.read.textFile(path).withColumnRenamed("value", "content").withColumn("fileName", input_file_name())
       val df_agg = df_lines.groupBy(col("fileName")).agg(concat_ws(" ",collect_list(df_lines.col("content"))).as("content"))
       df_agg.withColumn("_tmp", split(col("content"), "===="))
@@ -220,10 +222,54 @@ object LDABiotext {
           .option("delimiter", " ")
           .load(path)
           .toDF("code", "docs")
-          .withColumn("docs", regexp_replace(col("docs"), """([?.,;!:\\(\\)]|\p{IsDigit}{4}|\b\p{IsLetter}{1,2}\b)\s*""", " "))
+          .withColumn("docs", regexp_replace(col("docs"), """(\p{IsDigit}{4}|\b\p{IsLetter}{1,2}\b)\s*""", " "))
     }
 
-    // val df = df_body
+    // use spark-nlp pipeline to clean up the text
+    val documentAssembler = new DocumentAssembler()
+      .setInputCol("docs")
+      .setOutputCol("document")
+    val sentenceDetector = new SentenceDetector()
+      .setInputCols(Array("document"))
+      .setOutputCol("sentence")
+    val regexTokenizer = new Tokenizer()
+      .setInputCols("sentence")
+      .setOutputCol("token")
+    val normalizer = new Normalizer()
+      .setInputCols("token")
+      .setOutputCol("normalized")
+    // val stemmer = new Stemmer()
+    //   .setInputCols("normalized")
+    //   .setOutputCol("stem")
+    // val lemma = LemmatizerModel.load("/Users/ianshen/Downloads/lemma_fast_en_1.8.0_2.4_1545435317864")
+    //   .setInputCols("normalized")
+    //   .setOutputCol("lemma")
+    val ner = NerDLModel.load("/Users/ianshen/Downloads/ner_precise_en_1.8.0_2.4_1545439567330/")
+      .setInputCols("normalized", "document")
+      .setOutputCol("ner")
+
+    val nerConverter = new NerConverter()
+      .setInputCols("document", "normalized", "ner")
+      .setOutputCol("ner_converter")
+
+    val finisher = new Finisher()
+      .setInputCols("ner_converter")
+      .setCleanAnnotations(true)
+
+    // val finisher = new Finisher()
+    //   .setInputCols("ner_converter")
+
+    val nlp_pipeline = new Pipeline()
+        .setStages(Array(
+            documentAssembler,
+            sentenceDetector,
+            regexTokenizer,
+            normalizer,
+            ner,
+            nerConverter,
+            finisher
+        ))
+    val df = nlp_pipeline.fit(Seq.empty[String].toDS.toDF("docs")).transform(df_raw)
 
     val customizedStopWords: Array[String] = if (stopwordFile.isEmpty) {
       Array.empty[String]
@@ -231,11 +277,11 @@ object LDABiotext {
       val stopWordText = sc.textFile(stopwordFile).collect()
       stopWordText.flatMap(_.stripMargin.split("\\s+"))
     }
-    val tokenizer = new RegexTokenizer()
-      .setInputCol("docs")
-      .setOutputCol("rawTokens")
+    // val tokenizer = new RegexTokenizer()
+    //   .setInputCol("docs")
+    //   .setOutputCol("rawTokens")
     val stopWordsRemover = new StopWordsRemover()
-      .setInputCol("rawTokens")
+      .setInputCol("finished_ner_converter")
       .setOutputCol("tokens")    
     stopWordsRemover.setStopWords(stopWordsRemover.getStopWords ++ customizedStopWords)
     val countVectorizer = new CountVectorizer()
@@ -245,7 +291,7 @@ object LDABiotext {
       .setInputCol("tokens")
       .setOutputCol("features")
     val pipeline = new Pipeline()
-      .setStages(Array(tokenizer, stopWordsRemover, countVectorizer))
+      .setStages(Array(stopWordsRemover, countVectorizer))
 
     val model = pipeline.fit(df)
     val documents = model.transform(df)
@@ -256,7 +302,7 @@ object LDABiotext {
       .map(_.swap)
 
     (documents,
-      model.stages(2).asInstanceOf[CountVectorizerModel].vocabulary,  // vocabulary
+      model.stages(1).asInstanceOf[CountVectorizerModel].vocabulary,  // vocabulary
       documents.map(_._2.numActives).sum().toLong) // total token count
   }
 }

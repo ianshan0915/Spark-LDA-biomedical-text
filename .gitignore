@@ -4,5 +4,4 @@
 .DS_Store
 
 project/*/
-target/streams
-target/scala-2.11/*/
+target/
