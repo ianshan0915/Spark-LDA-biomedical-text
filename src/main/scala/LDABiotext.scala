@@ -13,7 +13,6 @@ import java.util.Locale
 
 import org.apache.log4j.{Level, Logger}
 import scopt.OptionParser
-
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.feature.{CountVectorizer, CountVectorizerModel, RegexTokenizer, StopWordsRemover}
@@ -21,8 +20,13 @@ import org.apache.spark.ml.linalg.{Vector => MLVector}
 import org.apache.spark.mllib.clustering.{DistributedLDAModel, EMLDAOptimizer, LDA, OnlineLDAOptimizer}
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import org.apache.spark.rdd.RDD
+<<<<<<< HEAD
 import org.apache.spark.sql.{Row, SparkSession, DataFrame}
 import org.apache.spark.sql.functions.{input_file_name, col, concat_ws, collect_list, split, regexp_replace}
+=======
+import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+import org.apache.spark.sql.functions._
+>>>>>>> 8d6a49a608fdcaae4c371a34f1c99ef7aa9481d8
 
 
 object LDABiotext {

@@ -2,6 +2,6 @@
 *.log
 .history
 
-project/*/
-target/streams
-target/scala-2.11/*/
+.idea/
+project/*
+target/*
