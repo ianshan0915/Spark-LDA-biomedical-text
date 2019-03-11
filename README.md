@@ -33,6 +33,9 @@ Usage: LDABiotext [options] <input>...
   --checkpointInterval <value>
           Iterations between each checkpoint.  Only used if checkpointDir is set.
           default: 10
+   --source <value>
+          Data source used, two types: text files from PMC OA subset, csv files from SparkText paper
+          default: "pmc"
   <input>...
           input paths (directories) to plain text corpora.  Each text file line should hold 1 document.
           required, String

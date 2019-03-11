@@ -21,7 +21,7 @@ import org.apache.spark.ml.linalg.{Vector => MLVector}
 import org.apache.spark.mllib.clustering.{DistributedLDAModel, EMLDAOptimizer, LDA, OnlineLDAOptimizer}
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{Row, SparkSession}
+import org.apache.spark.sql.{Row, SparkSession, DataFrame}
 import org.apache.spark.sql.functions.{input_file_name, col, concat_ws, collect_list, split, regexp_replace}
 
 
@@ -29,11 +29,14 @@ object LDABiotext {
 
   private case class Params(
       input: String = "",
+      source: String ="pmc",
       k: Int = 20,
       maxIterations: Int = 10,
       docConcentration: Double = -1,
       topicConcentration: Double = -1,
       vocabSize: Int = 10000,
+      minDF: Int =5,
+      maxDF: Double = 0.8,
       stopwordFile: String = "",
       algorithm: String = "em",
       checkpointDir: Option[String] = None,
@@ -62,6 +65,14 @@ object LDABiotext {
         .text(s"number of distinct word types to use, chosen by frequency. (-1=all)" +
           s"  default: ${defaultParams.vocabSize}")
         .action((x, c) => c.copy(vocabSize = x))
+      opt[Int]("minDF")
+        .text(s"the minimum number of different documents a term must appear in to be included in the vocabulary" +
+          s"  default: ${defaultParams.minDF}")
+        .action((x, c) => c.copy(minDF = x))
+      opt[Double]("maxDF")
+        .text(s"the maximum number of different documents a term must appear in to be included in the vocabulary" +
+        s"  default: ${defaultParams.maxDF}")
+        .action((x, c) => c.copy(maxDF = x))        
       opt[String]("stopwordFile")
         .text(s"filepath for a list of stopwords. Note: This must fit on a single machine." +
         s"  default: ${defaultParams.stopwordFile}")
@@ -79,6 +90,10 @@ object LDABiotext {
         .text(s"Iterations between each checkpoint.  Only used if checkpointDir is set." +
         s" default: ${defaultParams.checkpointInterval}")
         .action((x, c) => c.copy(checkpointInterval = x))
+      opt[String]("source")
+        .text(s"Data source used, two types: text files from PMC OA subset, csv files from SparkText paper" +
+        s" default: ${defaultParams.source}")
+        .action((x, c) => c.copy(source = x))
       arg[String]("<input>...")
         .text("input paths (directories) to plain text corpora." +
         "  Each text file line should hold 1 document.")
@@ -103,7 +118,7 @@ object LDABiotext {
     // Load documents, and prepare them for LDA.
     val preprocessStart = System.nanoTime()
     val (corpus, vocabArray, actualNumTokens) =
-      preprocess(sc, params.input, params.vocabSize, params.stopwordFile)
+      preprocess(sc, params.input, params.source, params.vocabSize, params.minDF, params.maxDF, params.stopwordFile)
     corpus.cache()
     val actualCorpusSize = corpus.count()
     val actualVocabSize = vocabArray.length
@@ -176,7 +191,10 @@ object LDABiotext {
       sc: SparkContext,
       // paths: Seq[String],
       path: String,
+      source: String,
       vocabSize: Int,
+      minDF: Int,
+      maxDF: Double,
       stopwordFile: String): (RDD[(Long, Vector)], Array[String], Long) = {
 
     val spark = SparkSession
@@ -188,11 +206,24 @@ object LDABiotext {
     // First, read one document per line in each text file, keep the filename.
     // Then aggregate the lines by filename (paper id)
   
-    val df_lines = spark.read.textFile(path).withColumnRenamed("value", "content").withColumn("fileName", input_file_name())
-    val df_agg = df_lines.groupBy(col("fileName")).agg(concat_ws(" ",collect_list(df_lines.col("content"))).as("content"))
-    val df_body = df_agg.withColumn("_tmp", split(col("content"), "====")).select($"_tmp".getItem(2).as("docs")).drop("_tmp")
+    val df: DataFrame = if(source=="pmc") {
+      val df_lines = spark.read.textFile(path).withColumnRenamed("value", "content").withColumn("fileName", input_file_name())
+      val df_agg = df_lines.groupBy(col("fileName")).agg(concat_ws(" ",collect_list(df_lines.col("content"))).as("content"))
+      df_agg.withColumn("_tmp", split(col("content"), "===="))
+            .select($"_tmp".getItem(2).as("docs"))
+            .drop("_tmp")
+            .withColumn("docs", regexp_replace(col("docs"), """([?.,;!:\\(\\)]|\p{IsDigit}{4}|\b\p{IsLetter}{1,2}\b)\s*""", " "))
+    } else {
+      spark.read
+          .format("csv")
+          .option("header","true")
+          .option("delimiter", " ")
+          .load(path)
+          .toDF("code", "docs")
+          .withColumn("docs", regexp_replace(col("docs"), """([?.,;!:\\(\\)]|\p{IsDigit}{4}|\b\p{IsLetter}{1,2}\b)\s*""", " "))
+    }
 
-    val df = df_body.withColumn("docs", regexp_replace(col("docs"), """([?.,;!:\\(\\)]|\p{IsDigit}{4}|\b\p{IsLetter}{1,2}\b)\s*""", " "))
+    // val df = df_body
 
     val customizedStopWords: Array[String] = if (stopwordFile.isEmpty) {
       Array.empty[String]
@@ -209,6 +240,8 @@ object LDABiotext {
     stopWordsRemover.setStopWords(stopWordsRemover.getStopWords ++ customizedStopWords)
     val countVectorizer = new CountVectorizer()
       .setVocabSize(vocabSize)
+      .setMinDF(minDF)
+      .setMaxDF(maxDF)
       .setInputCol("tokens")
       .setOutputCol("features")
     val pipeline = new Pipeline()
