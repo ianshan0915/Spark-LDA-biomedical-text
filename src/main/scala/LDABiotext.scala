@@ -209,10 +209,11 @@ object LDABiotext {
     val df: DataFrame = if(source=="pmc") {
       val df_lines = spark.read.textFile(path).withColumnRenamed("value", "content").withColumn("fileName", input_file_name())
       val df_agg = df_lines.groupBy(col("fileName")).agg(concat_ws(" ",collect_list(df_lines.col("content"))).as("content"))
-      df_agg.withColumn("_tmp", split(col("content"), "===="))
+      val df_out = df_agg.withColumn("_tmp", split(col("content"), "===="))
             .select($"_tmp".getItem(2).as("docs"))
             .drop("_tmp")
             .withColumn("docs", regexp_replace(col("docs"), """([?.,;!:\\(\\)]|\p{IsDigit}{4}|\b\p{IsLetter}{1,2}\b)\s*""", " "))
+      df_out.where($"docs".isNotNull)
     } else {
       spark.read
           .format("csv")
