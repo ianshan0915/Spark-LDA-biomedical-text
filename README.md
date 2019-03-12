@@ -42,6 +42,7 @@ Usage: LDABiotext [options] <input>...
 ```
 
 ## Example
+Topic modeling on biomedical literature from PMC OA Subset, more than 2M full-texts articles
 ```
 YOUR_SPARK_HOME/bin/spark-submit \
   --class "LDABiotext" \
@@ -49,3 +50,17 @@ YOUR_SPARK_HOME/bin/spark-submit \
   target/scala-2.11/NLPIR\ 2019-assembly-1.0.jar \
   "/path/to/papers/comm_use.0-9A-B.txt/Biotechnol_B*/*.txt"
 ```
+
+Document classification on biomedical literature from the SpartText paper, around 30K full-texts articles
+````
+spark-submit
+--driver-memory 12g \
+--class "LabelBiodoc" \
+--master local[5] \
+target/scala-2.11/NLPIR-2019-assembly-1.3.jar 
+--source "sparktext" \
+--stopwordFile src/main/resources/stopWds.txt  \
+--vocabSize 2000 --minDF 2 --maxDF 0.9 \
+--pretrainedFolder "/path/to/pretrained_ner_model/ner_precise_en_1.8.0_2.4_1545439567330/" \
+"/path/to/full_texts/SparkText_SampleDataset_29437Fulltexts.csv"
+````
