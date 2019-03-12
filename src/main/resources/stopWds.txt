@@ -3,9 +3,10 @@ al
 also
 many
 one
-use
-used
-using
+Fig
+Table
+File
+Figure
 1
 2
 3

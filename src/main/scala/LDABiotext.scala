@@ -222,7 +222,7 @@ object LDABiotext {
           .option("delimiter", " ")
           .load(path)
           .toDF("code", "docs")
-          .withColumn("docs", regexp_replace(col("docs"), """(\p{IsDigit}{4}|\b\p{IsLetter}{1,2}\b)\s*""", " "))
+          .withColumn("docs", regexp_replace(col("docs"), """(['?!:\\(\\)]|\p{IsDigit}{4}|\b\p{IsLetter}{1,2}\b)\s*""", " "))
     }
 
     // use spark-nlp pipeline to clean up the text
