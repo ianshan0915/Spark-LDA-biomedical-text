@@ -14,11 +14,11 @@ import java.util.Locale
 import org.apache.log4j.{Level, Logger}
 import scopt.OptionParser
 
-import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.ml.Pipeline
-import org.apache.spark.ml.feature.{CountVectorizer, CountVectorizerModel, RegexTokenizer, StopWordsRemover}
+import org.apache.spark.ml.feature.{CountVectorizer, StopWordsRemover, StringIndexer}
+import org.apache.spark.ml.classification.{NaiveBayes,LogisticRegression}
+import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
 import org.apache.spark.ml.linalg.{Vector => MLVector}
-import org.apache.spark.mllib.clustering.{DistributedLDAModel, EMLDAOptimizer, LDA, OnlineLDAOptimizer}
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{Row, SparkSession, DataFrame}
@@ -27,12 +27,12 @@ import org.apache.spark.sql.functions.{input_file_name, col, concat_ws, collect_
 import com.johnsnowlabs.nlp.base._
 import com.johnsnowlabs.nlp.annotator._
 
-object LDABiotext {
+object LabelBiodoc {
 
   private case class Params(
       input: String = "",
       source: String ="pmc",
-      k: Int = 20,
+      trainSize: Double = 0.7,
       maxIterations: Int = 10,
       docConcentration: Double = -1,
       topicConcentration: Double = -1,
@@ -40,18 +40,19 @@ object LDABiotext {
       minDF: Int =5,
       maxDF: Double = 0.8,
       stopwordFile: String = "",
-      algorithm: String = "em",
+      pretrainedFolder: String = "",
+      algorithm: String = "nb",
       checkpointDir: Option[String] = None,
       checkpointInterval: Int = 10)
 
   def main(args: Array[String]) {
     val defaultParams = Params()
 
-    val parser = new OptionParser[Params]("LDABiotext") {
-      head("LDABiotext: an LDA app for analyze biomedical literature from PMC OA Subset.")
-      opt[Int]("k")
-        .text(s"number of topics. default: ${defaultParams.k}")
-        .action((x, c) => c.copy(k = x))
+    val parser = new OptionParser[Params]("LabelBiodoc") {
+      head("LabelBiodoc: a documentation classification app for analyze biomedical literature from PMC OA Subset.")
+      opt[Double]("trainSize")
+        .text(s"training size ratio of the total data. default: ${defaultParams.trainSize}")
+        .action((x, c) => c.copy(trainSize = x))
       opt[Int]("maxIterations")
         .text(s"number of iterations of learning. default: ${defaultParams.maxIterations}")
         .action((x, c) => c.copy(maxIterations = x))
@@ -79,6 +80,10 @@ object LDABiotext {
         .text(s"filepath for a list of stopwords. Note: This must fit on a single machine." +
         s"  default: ${defaultParams.stopwordFile}")
         .action((x, c) => c.copy(stopwordFile = x))
+      opt[String]("pretrainedFolder")
+        .text(s"path for a the pretrained model NER deep learning. Note: since it is not always working online." +
+        s"  default: ${defaultParams.pretrainedFolder}")
+        .action((x, c) => c.copy(pretrainedFolder = x))
       opt[String]("algorithm")
         .text(s"inference algorithm to use. em and online are supported." +
         s" default: ${defaultParams.algorithm}")
@@ -101,7 +106,6 @@ object LDABiotext {
         "  Each text file line should hold 1 document.")
         .unbounded()
         .required()
-        // .action((x, c) => c.copy(input = c.input :+ x))
         .action((x, c) => c.copy(input = x))
     }
 
@@ -112,109 +116,106 @@ object LDABiotext {
   }
 
   private def run(params: Params): Unit = {
-    val conf = new SparkConf().setAppName(s"LDABiotext with $params")
-    val sc = new SparkContext(conf)
+    val spark = SparkSession
+      .builder
+      .appName("Biomedical docs classification")
+      .getOrCreate()
 
     Logger.getRootLogger.setLevel(Level.WARN)
 
-    // Load documents, and prepare them for LDA.
+    // Load documents, and preprocess them for modeling.
     val preprocessStart = System.nanoTime()
-    val (corpus, vocabArray, actualNumTokens) =
-      preprocess(sc, params.input, params.source, params.vocabSize, params.minDF, params.maxDF, params.stopwordFile)
-    corpus.cache()
-    val actualCorpusSize = corpus.count()
-    val actualVocabSize = vocabArray.length
+    val (trainingData, testData) =
+      preprocess(spark, params.trainSize, params.input, params.source, params.vocabSize, params.minDF, params.maxDF, params.stopwordFile, params.pretrainedFolder)
+    trainingData.cache()
+    testData.cache()
     val preprocessElapsed = (System.nanoTime() - preprocessStart) / 1e9
+    val trainSize = trainingData.count()
+    val testSize = testData.count()
 
     println()
-    println(s"Corpus summary:")
-    println(s"\t Training set size: $actualCorpusSize documents")
-    println(s"\t Vocabulary size: $actualVocabSize terms")
-    println(s"\t Training set size: $actualNumTokens tokens")
+    println(s"Dataset summary:")
+    println(s"\t Training set and test size: $trainSize, $testSize ")
     println(s"\t Preprocessing time: $preprocessElapsed sec")
     println()
 
-    // Run LDA.
-    val lda = new LDA()
+    // Build the classification models.
+    val nbmodel = new NaiveBayes()
+    val lr = new LogisticRegression()
+      .setMaxIter(10)
+      .setRegParam(0.3)
+      .setElasticNetParam(0.8)
 
-    val optimizer = params.algorithm.toLowerCase(Locale.ROOT) match {
-      case "em" => new EMLDAOptimizer
-      // add (1.0 / actualCorpusSize) to MiniBatchFraction be more robust on tiny datasets.
-      case "online" => new OnlineLDAOptimizer().setMiniBatchFraction(0.05 + 1.0 / actualCorpusSize)
+    // choose the model based on input params, only naive bayes, logistic regression are available now
+    val model_nm = params.algorithm.toLowerCase(Locale.ROOT) match {
+      case "nb" => nbmodel
+      case "lr" => lr
       case _ => throw new IllegalArgumentException(
-        s"Only em, online are supported but got ${params.algorithm}.")
+        s"Only naive bayes, logistic regression are supported but got ${params.algorithm}.")
     }
 
-    lda.setOptimizer(optimizer)
-      .setK(params.k)
-      .setMaxIterations(params.maxIterations)
-      .setDocConcentration(params.docConcentration)
-      .setTopicConcentration(params.topicConcentration)
-      .setCheckpointInterval(params.checkpointInterval)
-    if (params.checkpointDir.nonEmpty) {
-      sc.setCheckpointDir(params.checkpointDir.get)
-    }
     val startTime = System.nanoTime()
-    val ldaModel = lda.run(corpus)
+    val model = model_nm.fit(trainingData)
     val elapsed = (System.nanoTime() - startTime) / 1e9
 
-    println(s"Finished training LDA model.  Summary:")
+    val predictions = model.transform(testData)
+    println("The prediction of testData")
+    println(predictions.select("tokens","label","prediction").show())
+    // Evaluate the prediction results from accuracy, precision, recall
+    val evaluatorAcc= new MulticlassClassificationEvaluator()
+      .setLabelCol("label")
+      .setPredictionCol("prediction")
+      .setMetricName("accuracy")
+    val acc = evaluatorAcc.evaluate(predictions)
+    val evaluatorPres= new MulticlassClassificationEvaluator()
+      .setLabelCol("label")
+      .setPredictionCol("prediction")
+      .setMetricName("weightedPrecision")
+    val pres = evaluatorPres.evaluate(predictions)
+    val evaluatorRec= new MulticlassClassificationEvaluator()
+      .setLabelCol("label")
+      .setPredictionCol("prediction")
+      .setMetricName("weightedRecall")
+    val rec = evaluatorRec.evaluate(predictions)
+
+    println(s"Finished training  model.  Summary:")
     println(s"\t Training time: $elapsed sec")
+    println(s"\t Test set accuracy: $acc")
+    println(s"\t Test set weightedPrecision: $pres")
+    println(s"\t Test set weightedRecall: $rec")
 
-    if (ldaModel.isInstanceOf[DistributedLDAModel]) {
-      val distLDAModel = ldaModel.asInstanceOf[DistributedLDAModel]
-      val avgLogLikelihood = distLDAModel.logLikelihood / actualCorpusSize.toDouble
-      println(s"\t Training data average log likelihood: $avgLogLikelihood")
-      println()
-    }
-
-    // Print the topics, showing the top-weighted terms for each topic.
-    val topicIndices = ldaModel.describeTopics(maxTermsPerTopic = 10)
-    val topics = topicIndices.map { case (terms, termWeights) =>
-      terms.zip(termWeights).map { case (term, weight) => (vocabArray(term.toInt), weight) }
-    }
-    println(s"${params.k} topics:")
-    topics.zipWithIndex.foreach { case (topic, i) =>
-      println(s"TOPIC $i")
-      topic.foreach { case (term, weight) =>
-        println(s"$term\t$weight")
-      }
-      println()
-    }
-    sc.stop()
+    spark.stop()
   }
 
   /**
    * Load documents, tokenize them, create vocabulary, and prepare documents as term count vectors.
    * More preprocessing is nedded.
-   * @return (corpus, vocabulary as array, total token count in corpus)
+   * @return (trainingData, testData)
    */
   private def preprocess(
-      sc: SparkContext,
-      // paths: Seq[String],
+      spark: SparkSession,
+      train_size: Double,
       path: String,
       source: String,
       vocabSize: Int,
       minDF: Int,
       maxDF: Double,
-      stopwordFile: String): (RDD[(Long, Vector)], Array[String], Long) = {
+      stopwordFile: String,
+      pretrainedFolder: String): (DataFrame, DataFrame) = {
 
-    val spark = SparkSession
-      .builder
-      .getOrCreate()
     import spark.implicits._
-
     // Get corpus of document texts
     // First, read one document per line in each text file, keep the filename.
     // Then aggregate the lines by filename (paper id)
   
-    val df_raw: DataFrame = if(source=="pmc") {
+    val df: DataFrame = if(source=="pmc") {
       val df_lines = spark.read.textFile(path).withColumnRenamed("value", "content").withColumn("fileName", input_file_name())
       val df_agg = df_lines.groupBy(col("fileName")).agg(concat_ws(" ",collect_list(df_lines.col("content"))).as("content"))
-      df_agg.withColumn("_tmp", split(col("content"), "===="))
-            .select($"_tmp".getItem(2).as("docs"))
+      val df_out = df_agg.withColumn("_tmp", split(col("content"), "===="))
+            .select(col("_tmp").getItem(2).as("docs"))
             .drop("_tmp")
             .withColumn("docs", regexp_replace(col("docs"), """([?.,;!:\\(\\)]|\p{IsDigit}{4}|\b\p{IsLetter}{1,2}\b)\s*""", " "))
+      df_out.where(col("docs").isNotNull)
     } else {
       spark.read
           .format("csv")
@@ -238,28 +239,18 @@ object LDABiotext {
     val normalizer = new Normalizer()
       .setInputCols("token")
       .setOutputCol("normalized")
-    // val stemmer = new Stemmer()
-    //   .setInputCols("normalized")
-    //   .setOutputCol("stem")
-    // val lemma = LemmatizerModel.load("/Users/ianshen/Downloads/lemma_fast_en_1.8.0_2.4_1545435317864")
-    //   .setInputCols("normalized")
-    //   .setOutputCol("lemma")
-    val ner = NerDLModel.load("/Users/ianshen/Downloads/ner_precise_en_1.8.0_2.4_1545439567330/")
+    // NerDLModel.pretrained() does not work
+    val ner = NerDLModel.load(pretrainedFolder)
       .setInputCols("normalized", "document")
       .setOutputCol("ner")
-
     val nerConverter = new NerConverter()
       .setInputCols("document", "normalized", "ner")
       .setOutputCol("ner_converter")
-
     val finisher = new Finisher()
       .setInputCols("ner_converter")
       .setCleanAnnotations(true)
-
-    // val finisher = new Finisher()
-    //   .setInputCols("ner_converter")
-
-    val nlp_pipeline = new Pipeline()
+    // nlp pipeline using spark-nlp from the johnsnow labs
+    val sparknlp_pipeline = new Pipeline()
         .setStages(Array(
             documentAssembler,
             sentenceDetector,
@@ -269,17 +260,16 @@ object LDABiotext {
             nerConverter,
             finisher
         ))
-    val df = nlp_pipeline.fit(Seq.empty[String].toDS.toDF("docs")).transform(df_raw)
+    val df_tmp = sparknlp_pipeline.fit(Seq.empty[String].toDS.toDF("docs")).transform(df)
 
+    // remove stop words, start to use the built-in transformers
+    // add customerized stop words
     val customizedStopWords: Array[String] = if (stopwordFile.isEmpty) {
       Array.empty[String]
     } else {
-      val stopWordText = sc.textFile(stopwordFile).collect()
+      val stopWordText = spark.read.textFile(stopwordFile).collect
       stopWordText.flatMap(_.stripMargin.split("\\s+"))
     }
-    // val tokenizer = new RegexTokenizer()
-    //   .setInputCol("docs")
-    //   .setOutputCol("rawTokens")
     val stopWordsRemover = new StopWordsRemover()
       .setInputCol("finished_ner_converter")
       .setOutputCol("tokens")    
@@ -290,20 +280,23 @@ object LDABiotext {
       .setMaxDF(maxDF)
       .setInputCol("tokens")
       .setOutputCol("features")
+    val indexer = new StringIndexer()
+      .setInputCol("code")
+      .setOutputCol("label")
+    // assembly the pipeline
     val pipeline = new Pipeline()
-      .setStages(Array(stopWordsRemover, countVectorizer))
+      .setStages(Array(
+          stopWordsRemover,
+          countVectorizer,
+          indexer
+      ))
 
-    val model = pipeline.fit(df)
-    val documents = model.transform(df)
-      .select("features")
-      .rdd
-      .map { case Row(features: MLVector) => Vectors.fromML(features) }
-      .zipWithIndex()
-      .map(_.swap)
+    val df_features = pipeline.fit(df_tmp).transform(df_tmp)
+    val splits = df_features
+      .select("label","tokens","features")
+      .randomSplit(Array(train_size, 1-train_size), seed=1234)
 
-    (documents,
-      model.stages(1).asInstanceOf[CountVectorizerModel].vocabulary,  // vocabulary
-      documents.map(_._2.numActives).sum().toLong) // total token count
+    (splits(0), splits(1))
   }
 }
 // scalastyle:on println

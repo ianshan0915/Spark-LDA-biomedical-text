@@ -1,6 +1,6 @@
-name := "NLPIR 2019"
+name := "NLPIR-2019"
 
-version := "1.2"
+version := "1.3"
 
 scalaVersion := "2.11.12"
 
