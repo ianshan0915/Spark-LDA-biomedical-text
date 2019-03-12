@@ -57,10 +57,12 @@ spark-submit
 --driver-memory 12g \
 --class "LabelBiodoc" \
 --master local[5] \
-target/scala-2.11/NLPIR-2019-assembly-1.3.jar 
+target/scala-2.11/NLPIR-2019-assembly-1.3.jar \
 --source "sparktext" \
---stopwordFile src/main/resources/stopWds.txt  \
---vocabSize 2000 --minDF 2 --maxDF 0.9 \
+--stopwordFile src/main/resources/stopWds.txt \
+--vocabSize 2000 \
+--minDF 2 \
+--maxDF 0.9 \
 --pretrainedFolder "/path/to/pretrained_ner_model/ner_precise_en_1.8.0_2.4_1545439567330/" \
 "/path/to/full_texts/SparkText_SampleDataset_29437Fulltexts.csv"
 ````
