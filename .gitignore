@@ -3,5 +3,9 @@
 .history
 
 .idea/
-project/*
-target/*
+*.history
+.DS_Store
+
+project/*/
+target/
+

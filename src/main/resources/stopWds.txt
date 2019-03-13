@@ -3,6 +3,14 @@ al
 also
 many
 one
+Fig
+Table
+File
+Figure
+Background
+Method
+Result
+Discussion
 1
 2
 3
