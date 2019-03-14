@@ -44,23 +44,27 @@ Usage: LDABiotext [options] <input>...
 ## Example
 Topic modeling on biomedical literature from PMC OA Subset, more than 2M full-texts articles
 ```
-YOUR_SPARK_HOME/bin/spark-submit \
-  --class "LDABiotext" \
-  --master local[4] \
-  target/scala-2.11/NLPIR\ 2019-assembly-1.0.jar \
-  "/path/to/papers/comm_use.0-9A-B.txt/Biotechnol_B*/*.txt"
+spark-submit \
+ --driver-memory 24g \
+ --executor-memory 72g \
+ --class "LDABiotext" \
+ --master spark://instance-3.europe-west4-a.c.sound-memory-230511.internal:7077 \
+ /mnt/NLPIR-2019-assembly-1.3.jar \
+ --vocabSize 3000 \
+  "/mnt/pmc-bulk-txt/[A-F,a-f]*/PMC*.txt"
 ```
 
 Document classification on biomedical literature from the SpartText paper, around 30K full-texts articles
 ````
-spark-submit
---driver-memory 12g \
+spark-submit \
+--driver-memory 16g \
+--executor-memory 80g \
 --class "LabelBiodoc" \
---master local[5] \
-target/scala-2.11/NLPIR-2019-assembly-1.3.jar 
+--master spark://instance-3.europe-west4-a.c.sound-memory-230511.internal:7077 \
+/mnt/NLPIR-2019-assembly-1.3.jar \
 --source "sparktext" \
---stopwordFile src/main/resources/stopWds.txt  \
---vocabSize 2000 --minDF 2 --maxDF 0.9 \
---pretrainedFolder "/path/to/pretrained_ner_model/ner_precise_en_1.8.0_2.4_1545439567330/" \
-"/path/to/full_texts/SparkText_SampleDataset_29437Fulltexts.csv"
+--stopwordFile /mnt/pretrained-models/stopWds.txt  \
+--vocabSize 3000 --minDF 2 --maxDF 0.9 \
+--pretrainedFolder "/mnt/pretrained-models/johnsnowlabs/" \
+"/mnt/sparktext/SparkText_SampleDataset_29437Fulltexts.csv"
 ````

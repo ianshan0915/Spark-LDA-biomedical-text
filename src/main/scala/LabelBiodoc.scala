@@ -214,7 +214,7 @@ object LabelBiodoc {
       val df_out = df_agg.withColumn("_tmp", split(col("content"), "===="))
             .select(col("_tmp").getItem(2).as("docs"))
             .drop("_tmp")
-            .withColumn("docs", regexp_replace(col("docs"), """([?.,;!:\\(\\)]|\p{IsDigit}{4}|\b\p{IsLetter}{1,2}\b)\s*""", " "))
+//            .withColumn("docs", regexp_replace(col("docs"), """([?.,;!:\\(\\)]|\p{IsDigit}{4}|\b\p{IsLetter}{1,2}\b)\s*""", " "))
       df_out.where(col("docs").isNotNull)
     } else {
       spark.read
@@ -240,7 +240,8 @@ object LabelBiodoc {
       .setInputCols("token")
       .setOutputCol("normalized")
     // NerDLModel.pretrained() does not work
-    val ner = NerDLModel.load(pretrainedFolder)
+//    val ner = NerDLModel.load(pretrainedFolder)
+    val ner = NerDLModel.pretrained()
       .setInputCols("normalized", "document")
       .setOutputCol("ner")
     val nerConverter = new NerConverter()

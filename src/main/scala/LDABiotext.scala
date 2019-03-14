@@ -24,23 +24,23 @@ import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.apache.spark.sql.functions._
 
 
-
 object LDABiotext {
 
   private case class Params(
-      input: String = "",
-      source: String ="pmc",
-      k: Int = 20,
-      maxIterations: Int = 10,
-      docConcentration: Double = -1,
-      topicConcentration: Double = -1,
-      vocabSize: Int = 10000,
-      minDF: Int =5,
-      maxDF: Double = 0.8,
-      stopwordFile: String = "",
-      algorithm: String = "em",
-      checkpointDir: Option[String] = None,
-      checkpointInterval: Int = 10)
+                             input: String = "",
+                             source: String = "pmc",
+                             fileType: String = "txt",
+                             k: Int = 20,
+                             maxIterations: Int = 10,
+                             docConcentration: Double = -1,
+                             topicConcentration: Double = -1,
+                             vocabSize: Int = 10000,
+                             minDF: Int = 5,
+                             maxDF: Double = 0.8,
+                             stopwordFile: String = "",
+                             algorithm: String = "em",
+                             checkpointDir: Option[String] = None,
+                             checkpointInterval: Int = 10)
 
   def main(args: Array[String]) {
     val defaultParams = Params()
@@ -55,11 +55,11 @@ object LDABiotext {
         .action((x, c) => c.copy(maxIterations = x))
       opt[Double]("docConcentration")
         .text(s"amount of topic smoothing to use (> 1.0) (-1=auto)." +
-        s"  default: ${defaultParams.docConcentration}")
+          s"  default: ${defaultParams.docConcentration}")
         .action((x, c) => c.copy(docConcentration = x))
       opt[Double]("topicConcentration")
         .text(s"amount of term (word) smoothing to use (> 1.0) (-1=auto)." +
-        s"  default: ${defaultParams.topicConcentration}")
+          s"  default: ${defaultParams.topicConcentration}")
         .action((x, c) => c.copy(topicConcentration = x))
       opt[Int]("vocabSize")
         .text(s"number of distinct word types to use, chosen by frequency. (-1=all)" +
@@ -71,32 +71,36 @@ object LDABiotext {
         .action((x, c) => c.copy(minDF = x))
       opt[Double]("maxDF")
         .text(s"the maximum number of different documents a term must appear in to be included in the vocabulary" +
-        s"  default: ${defaultParams.maxDF}")
-        .action((x, c) => c.copy(maxDF = x))        
+          s"  default: ${defaultParams.maxDF}")
+        .action((x, c) => c.copy(maxDF = x))
       opt[String]("stopwordFile")
         .text(s"filepath for a list of stopwords. Note: This must fit on a single machine." +
-        s"  default: ${defaultParams.stopwordFile}")
+          s"  default: ${defaultParams.stopwordFile}")
         .action((x, c) => c.copy(stopwordFile = x))
       opt[String]("algorithm")
         .text(s"inference algorithm to use. em and online are supported." +
-        s" default: ${defaultParams.algorithm}")
+          s" default: ${defaultParams.algorithm}")
         .action((x, c) => c.copy(algorithm = x))
       opt[String]("checkpointDir")
         .text(s"Directory for checkpointing intermediate results." +
-        s"  Checkpointing helps with recovery and eliminates temporary shuffle files on disk." +
-        s"  default: ${defaultParams.checkpointDir}")
+          s"  Checkpointing helps with recovery and eliminates temporary shuffle files on disk." +
+          s"  default: ${defaultParams.checkpointDir}")
         .action((x, c) => c.copy(checkpointDir = Some(x)))
       opt[Int]("checkpointInterval")
         .text(s"Iterations between each checkpoint.  Only used if checkpointDir is set." +
-        s" default: ${defaultParams.checkpointInterval}")
+          s" default: ${defaultParams.checkpointInterval}")
         .action((x, c) => c.copy(checkpointInterval = x))
       opt[String]("source")
         .text(s"Data source used, two types: text files from PMC OA subset, csv files from SparkText paper" +
-        s" default: ${defaultParams.source}")
+          s" default: ${defaultParams.source}")
+        .action((x, c) => c.copy(source = x))
+      opt[String]("fileType")
+        .text(s"Data file type used, two types: text files from PMC OA subset, csv files from SparkText paper" +
+          s" default: ${defaultParams.fileType}")
         .action((x, c) => c.copy(source = x))
       arg[String]("<input>...")
         .text("input paths (directories) to plain text corpora." +
-        "  Each text file line should hold 1 document.")
+          "  Each text file line should hold 1 document.")
         .unbounded()
         .required()
         // .action((x, c) => c.copy(input = c.input :+ x))
@@ -118,7 +122,16 @@ object LDABiotext {
     // Load documents, and prepare them for LDA.
     val preprocessStart = System.nanoTime()
     val (corpus, vocabArray, actualNumTokens) =
-      preprocess(sc, params.input, params.source, params.vocabSize, params.minDF, params.maxDF, params.stopwordFile)
+      preprocess(
+        sc,
+        params.input,
+        params.source,
+        params.fileType,
+        params.vocabSize,
+        params.minDF,
+        params.maxDF,
+        params.stopwordFile
+      )
     corpus.cache()
     val actualCorpusSize = corpus.count()
     val actualVocabSize = vocabArray.length
@@ -183,19 +196,21 @@ object LDABiotext {
   }
 
   /**
-   * Load documents, tokenize them, create vocabulary, and prepare documents as term count vectors.
-   * More preprocessing is nedded.
-   * @return (corpus, vocabulary as array, total token count in corpus)
-   */
+    * Load documents, tokenize them, create vocabulary, and prepare documents as term count vectors.
+    * More preprocessing is nedded.
+    *
+    * @return (corpus, vocabulary as array, total token count in corpus)
+    */
   private def preprocess(
-      sc: SparkContext,
-      // paths: Seq[String],
-      path: String,
-      source: String,
-      vocabSize: Int,
-      minDF: Int,
-      maxDF: Double,
-      stopwordFile: String): (RDD[(Long, Vector)], Array[String], Long) = {
+                          sc: SparkContext,
+                          // paths: Seq[String],
+                          path: String,
+                          source: String,
+                          fileType: String,
+                          vocabSize: Int,
+                          minDF: Int,
+                          maxDF: Double,
+                          stopwordFile: String): (RDD[(Long, Vector)], Array[String], Long) = {
 
     val spark = SparkSession
       .builder
@@ -205,23 +220,32 @@ object LDABiotext {
     // Get corpus of document texts
     // First, read one document per line in each text file, keep the filename.
     // Then aggregate the lines by filename (paper id)
-  
-    val df: DataFrame = if(source=="pmc") {
-      val df_lines = spark.read.textFile(path).withColumnRenamed("value", "content").withColumn("fileName", input_file_name())
-      val df_agg = df_lines.groupBy(col("fileName")).agg(concat_ws(" ",collect_list(df_lines.col("content"))).as("content"))
+
+    val df: DataFrame = if (source == "pmc") {
+      val df_lines = if (fileType == "txt") {
+        spark.read.textFile(path)
+          .withColumnRenamed("value", "content")
+          .withColumn("fileName", input_file_name())
+      } else {
+        spark.read.parquet(path)
+          .withColumnRenamed("value", "content")
+          .withColumnRenamed("filename", "fileName")
+      }
+
+      val df_agg = df_lines.groupBy(col("fileName")).agg(concat_ws(" ", collect_list(df_lines.col("content"))).as("content"))
       val df_out = df_agg.withColumn("_tmp", split(col("content"), "===="))
-            .select($"_tmp".getItem(2).as("docs"))
-            .drop("_tmp")
-            .withColumn("docs", regexp_replace(col("docs"), """([?.,;!:\\(\\)]|\p{IsDigit}{4}|\b\p{IsLetter}{1,2}\b)\s*""", " "))
+        .select($"_tmp".getItem(2).as("docs"))
+        .drop("_tmp")
+        .withColumn("docs", regexp_replace(col("docs"), """([?.,;!:\\(\\)]|\p{IsDigit}{4}|\b\p{IsLetter}{1,2}\b)\s*""", " "))
       df_out.where($"docs".isNotNull)
     } else {
       spark.read
-          .format("csv")
-          .option("header","true")
-          .option("delimiter", " ")
-          .load(path)
-          .toDF("code", "docs")
-          .withColumn("docs", regexp_replace(col("docs"), """([?.,;!:\\(\\)]|\p{IsDigit}{4}|\b\p{IsLetter}{1,2}\b)\s*""", " "))
+        .format("csv")
+        .option("header", "true")
+        .option("delimiter", " ")
+        .load(path)
+        .toDF("code", "docs")
+        .withColumn("docs", regexp_replace(col("docs"), """([?.,;!:\\(\\)]|\p{IsDigit}{4}|\b\p{IsLetter}{1,2}\b)\s*""", " "))
     }
 
     // val df = df_body
@@ -237,7 +261,7 @@ object LDABiotext {
       .setOutputCol("rawTokens")
     val stopWordsRemover = new StopWordsRemover()
       .setInputCol("rawTokens")
-      .setOutputCol("tokens")    
+      .setOutputCol("tokens")
     stopWordsRemover.setStopWords(stopWordsRemover.getStopWords ++ customizedStopWords)
     val countVectorizer = new CountVectorizer()
       .setVocabSize(vocabSize)
@@ -257,8 +281,9 @@ object LDABiotext {
       .map(_.swap)
 
     (documents,
-      model.stages(2).asInstanceOf[CountVectorizerModel].vocabulary,  // vocabulary
+      model.stages(2).asInstanceOf[CountVectorizerModel].vocabulary, // vocabulary
       documents.map(_._2.numActives).sum().toLong) // total token count
   }
 }
+
 // scalastyle:on println
