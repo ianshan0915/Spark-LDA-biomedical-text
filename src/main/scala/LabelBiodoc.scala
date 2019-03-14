@@ -159,8 +159,14 @@ object LabelBiodoc {
     val elapsed = (System.nanoTime() - startTime) / 1e9
 
     val predictions = model.transform(testData)
-    println("The prediction of testData")
-    println(predictions.select("tokens","label","prediction").show())
+    // println("The prediction of testData")
+    // val preds_store = predictions.withColumn("tokens_concat", concat_ws(",", col("tokens")))
+    // preds_store.select("tokens_concat","label","prediction")
+    //   .write
+    //   .format("csv")
+    //   .save("/Users/ianshen/Documents/predictions.csv")
+
+    // println(predictions.select("tokens_concat","label","prediction").show())
     // Evaluate the prediction results from accuracy, precision, recall
     val evaluatorAcc= new MulticlassClassificationEvaluator()
       .setLabelCol("label")
@@ -223,7 +229,7 @@ object LabelBiodoc {
           .option("delimiter", " ")
           .load(path)
           .toDF("code", "docs")
-          .withColumn("docs", regexp_replace(col("docs"), """(['?!:\\(\\)]|\p{IsDigit}{4}|\b\p{IsLetter}{1,2}\b)\s*""", " "))
+          // .withColumn("docs", regexp_replace(col("docs"), """(['?!:]|\p{IsDigit}{4}|\b\p{IsLetter}{1,2}\b)\s*""", " "))
     }
 
     // use spark-nlp pipeline to clean up the text
@@ -236,18 +242,24 @@ object LabelBiodoc {
     val regexTokenizer = new Tokenizer()
       .setInputCols("sentence")
       .setOutputCol("token")
-    val normalizer = new Normalizer()
+    // val normalizer = new Normalizer()
+    //   .setInputCols("token")
+    //   .setOutputCol("normalized")
+    // // NerDLModel.pretrained() does not work
+    // val ner = NerDLModel.load(pretrainedFolder)
+    //   .setInputCols("normalized", "document")
+    //   .setOutputCol("ner")
+    // val nerConverter = new NerConverter()
+    //   .setInputCols("document", "normalized", "ner")
+    //   .setOutputCol("ner_converter")
+    // val finisher = new Finisher()
+    //   .setInputCols("ner_converter")
+    //   .setCleanAnnotations(true)
+    val stemmer = new Stemmer()
       .setInputCols("token")
-      .setOutputCol("normalized")
-    // NerDLModel.pretrained() does not work
-    val ner = NerDLModel.load(pretrainedFolder)
-      .setInputCols("normalized", "document")
-      .setOutputCol("ner")
-    val nerConverter = new NerConverter()
-      .setInputCols("document", "normalized", "ner")
-      .setOutputCol("ner_converter")
+      .setOutputCol("stem")
     val finisher = new Finisher()
-      .setInputCols("ner_converter")
+      .setInputCols("stem")
       .setCleanAnnotations(true)
     // nlp pipeline using spark-nlp from the johnsnow labs
     val sparknlp_pipeline = new Pipeline()
@@ -255,9 +267,10 @@ object LabelBiodoc {
             documentAssembler,
             sentenceDetector,
             regexTokenizer,
-            normalizer,
-            ner,
-            nerConverter,
+            stemmer,
+            // normalizer,
+            // ner,
+            // nerConverter,
             finisher
         ))
     val df_tmp = sparknlp_pipeline.fit(Seq.empty[String].toDS.toDF("docs")).transform(df)
@@ -271,7 +284,7 @@ object LabelBiodoc {
       stopWordText.flatMap(_.stripMargin.split("\\s+"))
     }
     val stopWordsRemover = new StopWordsRemover()
-      .setInputCol("finished_ner_converter")
+      .setInputCol("finished_stem")
       .setOutputCol("tokens")    
     stopWordsRemover.setStopWords(stopWordsRemover.getStopWords ++ customizedStopWords)
     val countVectorizer = new CountVectorizer()
