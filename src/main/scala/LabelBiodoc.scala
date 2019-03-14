@@ -220,11 +220,7 @@ object LabelBiodoc {
       val df_out = df_agg.withColumn("_tmp", split(col("content"), "===="))
             .select(col("_tmp").getItem(2).as("docs"))
             .drop("_tmp")
-<<<<<<< HEAD
 //            .withColumn("docs", regexp_replace(col("docs"), """([?.,;!:\\(\\)]|\p{IsDigit}{4}|\b\p{IsLetter}{1,2}\b)\s*""", " "))
-=======
-            .withColumn("docs", regexp_replace(col("docs"), """([?.,;*%!:\\[\\]]|\p{IsDigit}{4}|\b\p{IsLetter}{1,2}\b)\s*""", " "))
->>>>>>> adf39ebf5363517c1a44fda9c486b8637794f458
       df_out.where(col("docs").isNotNull)
     } else {
       spark.read
@@ -239,43 +235,6 @@ object LabelBiodoc {
     // val df_sample = df_splits(0)
 
     // use spark-nlp pipeline to clean up the text
-<<<<<<< HEAD
-    val documentAssembler = new DocumentAssembler()
-      .setInputCol("docs")
-      .setOutputCol("document")
-    val sentenceDetector = new SentenceDetector()
-      .setInputCols(Array("document"))
-      .setOutputCol("sentence")
-    val regexTokenizer = new Tokenizer()
-      .setInputCols("sentence")
-      .setOutputCol("token")
-    val normalizer = new Normalizer()
-      .setInputCols("token")
-      .setOutputCol("normalized")
-    // NerDLModel.pretrained() does not work
-//    val ner = NerDLModel.load(pretrainedFolder)
-    val ner = NerDLModel.pretrained()
-      .setInputCols("normalized", "document")
-      .setOutputCol("ner")
-    val nerConverter = new NerConverter()
-      .setInputCols("document", "normalized", "ner")
-      .setOutputCol("ner_converter")
-    val finisher = new Finisher()
-      .setInputCols("ner_converter")
-      .setCleanAnnotations(true)
-    // nlp pipeline using spark-nlp from the johnsnow labs
-    val sparknlp_pipeline = new Pipeline()
-        .setStages(Array(
-            documentAssembler,
-            sentenceDetector,
-            regexTokenizer,
-            normalizer,
-            ner,
-            nerConverter,
-            finisher
-        ))
-    val df_tmp = sparknlp_pipeline.fit(Seq.empty[String].toDS.toDF("docs")).transform(df)
-=======
     // val documentAssembler = new DocumentAssembler()
     //   .setInputCol("docs")
     //   .setOutputCol("document")
@@ -321,7 +280,6 @@ object LabelBiodoc {
     //         finisher
     //     ))
     // val df_tmp = sparknlp_pipeline.fit(Seq.empty[String].toDS.toDF("docs")).transform(df_sample)
->>>>>>> adf39ebf5363517c1a44fda9c486b8637794f458
 
     // remove stop words, start to use the built-in transformers
     // add customerized stop words
