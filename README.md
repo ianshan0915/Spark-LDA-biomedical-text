@@ -45,26 +45,29 @@ Usage: LDABiotext [options] <input>...
 Topic modeling on biomedical literature from PMC OA Subset, more than 2M full-texts articles
 ```
 spark-submit \
- --driver-memory 24g \
- --executor-memory 72g \
+ --driver-memory 6g \
+ --executor-memory 96g \
  --class "LDABiotext" \
- --master spark://instance-3.europe-west4-a.c.sound-memory-230511.internal:7077 \
+ --master spark://instance-2.europe-west4-a.c.sound-memory-230511.internal:7077 \
  /mnt/NLPIR-2019-assembly-1.3.jar \
+ --source "pmc" \
  --vocabSize 3000 \
-  "/mnt/pmc-bulk-txt/[A-F,a-f]*/PMC*.txt"
+ --fileType "parquet" \
+  "/mnt/pmc-txt-parquet"
 ```
 
 Document classification on biomedical literature from the SpartText paper, around 30K full-texts articles
 ````
 spark-submit \
---driver-memory 16g \
+--driver-memory 4g \
 --executor-memory 80g \
 --class "LabelBiodoc" \
---master spark://instance-3.europe-west4-a.c.sound-memory-230511.internal:7077 \
+--master spark://instance-2.europe-west4-a.c.sound-memory-230511.internal:7077 \
 /mnt/NLPIR-2019-assembly-1.3.jar \
 --source "sparktext" \
 --stopwordFile /mnt/pretrained-models/stopWds.txt  \
---vocabSize 3000 --minDF 2 --maxDF 0.9 \
---pretrainedFolder "/mnt/pretrained-models/johnsnowlabs/" \
+--minDF 100 --maxDF 0.9 \
+--trainSize 0.8 \
+--vocabSize 10000 \
 "/mnt/sparktext/SparkText_SampleDataset_29437Fulltexts.csv"
 ````

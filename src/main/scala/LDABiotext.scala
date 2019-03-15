@@ -97,7 +97,7 @@ object LDABiotext {
       opt[String]("fileType")
         .text(s"Data file type used, two types: text files from PMC OA subset, csv files from SparkText paper" +
           s" default: ${defaultParams.fileType}")
-        .action((x, c) => c.copy(source = x))
+        .action((x, c) => c.copy(fileType = x))
       arg[String]("<input>...")
         .text("input paths (directories) to plain text corpora." +
           "  Each text file line should hold 1 document.")
@@ -203,7 +203,6 @@ object LDABiotext {
     */
   private def preprocess(
                           sc: SparkContext,
-                          // paths: Seq[String],
                           path: String,
                           source: String,
                           fileType: String,
@@ -222,22 +221,20 @@ object LDABiotext {
     // Then aggregate the lines by filename (paper id)
 
     val df: DataFrame = if (source == "pmc") {
-      val df_lines = if (fileType == "txt") {
-        spark.read.textFile(path)
-          .withColumnRenamed("value", "content")
-          .withColumn("fileName", input_file_name())
-      } else {
+      if (fileType == "txt") {
+        val df_lines =
+          spark.read.textFile(path)
+            .withColumnRenamed("value", "content")
+            .withColumn("fileName", input_file_name())
+        val df_agg = df_lines.groupBy(col("fileName")).agg(concat_ws(" ", collect_list(df_lines.col("content"))).as("content"))
+        val df_out = df_agg.withColumn("_tmp", split(col("content"), "===="))
+          .select($"_tmp".getItem(2).as("docs"))
+          .drop("_tmp")
+          .withColumn("docs", regexp_replace(col("docs"), """([?.,;!:\\(\\)]|\p{IsDigit}{4}|\b\p{IsLetter}{1,2}\b)\s*""", " "))
+        df_out.where($"docs".isNotNull)
+      } else if (fileType == "parquet") {
         spark.read.parquet(path)
-          .withColumnRenamed("value", "content")
-          .withColumnRenamed("filename", "fileName")
-      }
-
-      val df_agg = df_lines.groupBy(col("fileName")).agg(concat_ws(" ", collect_list(df_lines.col("content"))).as("content"))
-      val df_out = df_agg.withColumn("_tmp", split(col("content"), "===="))
-        .select($"_tmp".getItem(2).as("docs"))
-        .drop("_tmp")
-        .withColumn("docs", regexp_replace(col("docs"), """([?.,;!:\\(\\)]|\p{IsDigit}{4}|\b\p{IsLetter}{1,2}\b)\s*""", " "))
-      df_out.where($"docs".isNotNull)
+      } else throw new IllegalArgumentException("filType was wrong...")
     } else {
       spark.read
         .format("csv")
@@ -247,7 +244,7 @@ object LDABiotext {
         .toDF("code", "docs")
         .withColumn("docs", regexp_replace(col("docs"), """([?.,;!:\\(\\)]|\p{IsDigit}{4}|\b\p{IsLetter}{1,2}\b)\s*""", " "))
     }
-
+    println(s"±±±±±±±§§§§§§§§size is ${df.count()}, cols are ${df.columns}")
     // val df = df_body
 
     val customizedStopWords: Array[String] = if (stopwordFile.isEmpty) {

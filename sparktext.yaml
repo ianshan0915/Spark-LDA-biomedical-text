@@ -1,0 +1,34 @@
+---
+apiVersion: "sparkoperator.k8s.io/v1beta1"
+kind: SparkApplication
+metadata:
+  name: pyspark-pi
+  namespace: default
+spec:
+  type: Scala
+  mode: cluster
+  image: "wangxisea/BioNLP:latest"
+  imagePullPolicy: Always
+  mainApplicationFile: local:///app/NLPIR-2019-assembly-1.3.jar
+  arguments: ["--class","LabelBiodoc",
+              "--stopwordFile","",
+              "--vocabSize","10000",
+              "--trainSize", "0.8",
+              "--fileType","sparktext",
+              ""]
+  sparkVersion: "2.4.0"
+  restartPolicy:
+    type: Never
+  driver:
+    cores: "500m"
+    coreLimit: "800m"
+    memory: "16G"
+    labels:
+      version: 2.4.0
+    serviceAccount: spark
+  executor:
+    cores: 16
+    instances: 1
+    memory: "80g"
+    labels:
+      version: 2.4.0
