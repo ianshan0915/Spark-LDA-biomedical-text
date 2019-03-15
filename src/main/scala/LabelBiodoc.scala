@@ -116,6 +116,7 @@ object LabelBiodoc {
   }
 
   private def run(params: Params): Unit = {
+    val startTime = System.nanoTime()
     val spark = SparkSession
       .builder
       .appName("Biomedical docs classification")
@@ -154,11 +155,10 @@ object LabelBiodoc {
         s"Only naive bayes, logistic regression are supported but got ${params.algorithm}.")
     }
 
-    val startTime = System.nanoTime()
     val model = model_nm.fit(trainingData)
-    val elapsed = (System.nanoTime() - startTime) / 1e9
 
     val predictions = model.transform(testData)
+
 
     // println("The prediction of testData")
     // val preds_store = predictions.withColumn("tokens_concat", concat_ws(",", col("tokens")))
@@ -183,7 +183,7 @@ object LabelBiodoc {
       .setPredictionCol("prediction")
       .setMetricName("weightedRecall")
     val rec = evaluatorRec.evaluate(predictions)
-
+    val elapsed = (System.nanoTime() - startTime) / 1e9
     println(s"Finished training  model.  Summary:")
     println(s"\t Training time: $elapsed sec")
     println(s"\t Test set accuracy: $acc")
@@ -229,7 +229,7 @@ object LabelBiodoc {
           .option("delimiter", " ")
           .load(path)
           .toDF("code", "docs")
-          // .withColumn("docs", regexp_replace(col("docs"), """(['?!:;-=]|\p{IsDigit}{4}|\b\p{IsLetter}{1,2}\b)\s*""", " "))
+          // .withColumn("docs", regexp_replace(col("docs"), """(['?!:;-=]|\b{IsDigit}{4}\b""", " "))
     }
     // val df_splits = df.randomSplit(Array(1-trainSize, trainSize), seed=1230)
     // val df_sample = df_splits(0)
@@ -287,7 +287,7 @@ object LabelBiodoc {
       Array.empty[String]
     } else {
       val stopWordText = spark.read.textFile(stopwordFile).collect
-      stopWordText.flatMap(_.stripMargin.split("\\s+"))
+      stopWordText.flatMap(_.stripMargin.split(","))
     }
     val tokenizer = new RegexTokenizer()
       .setInputCol("docs")
@@ -318,7 +318,7 @@ object LabelBiodoc {
       .select("label","tokens","features")
       .randomSplit(Array(trainSize, 1-trainSize), seed=1234)
 
-    // println(model_pipeline.stages(2).asInstanceOf[CountVectorizerModel].vocabulary.mkString(","))
+    println(model_pipeline.stages(2).asInstanceOf[CountVectorizerModel].vocabulary.mkString(","))
     (splits(0), splits(1))
   }
 }
