@@ -7,7 +7,7 @@ metadata:
 spec:
   type: Scala
   mode: cluster
-  image: "wangxisea/BioNLP:latest"
+  image: "wangxisea/bionlp:latest"
   imagePullPolicy: Always
   mainApplicationFile: local:///app/NLPIR-2019-assembly-1.3.jar
   arguments: ["--class","LDABiotext",
