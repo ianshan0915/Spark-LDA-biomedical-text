@@ -35,8 +35,7 @@ RUN cd /opt \
     && mkdir -p $SBT_HOME \
     && tar xzf sbt-$SBT_VERSION.tgz \
     && ls -l \
-    && mv /opt/sbt $SBT_HOME \
-    && apk del curl git wget
+    && mv /opt/sbt $SBT_HOME
 
 # Dwonload gcs connector
 RUN cd /opt/spark/jars \
@@ -47,6 +46,9 @@ RUN cd /opt \
     && git clone https://gitlab.com/wangxisea/spark-lda-biomedical-text.git \
     && cd spark-lda-biomedical-text \
     && sbt assembly
+
+# Clean packages
+RUN apk del curl git wget
 
 WORKDIR /app
 COPY target/scala-2.11/NLPIR-2019-assembly-1.3.jar /app
