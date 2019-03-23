@@ -36,8 +36,7 @@ RUN \
   dpkg -i sbt-$SBT_VERSION.deb && \
   rm sbt-$SBT_VERSION.deb && \
   apt-get update && \
-  apt-get install sbt
-
+  apt-get install sbt \
     && cd /opt \
     && git clone https://gitlab.com/wangxisea/spark-lda-biomedical-text.git \
     && cd spark-lda-biomedical-text \
