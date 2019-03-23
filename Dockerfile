@@ -9,7 +9,7 @@ ENV SBT_VERSION=1.2.8
 ENV SBT_HOME=/usr/local/sbt
 ENV PATH ${PATH}:${SBT_HOME}/bin
 
-RUN apk-get install --no-cache curl bash openjdk8-jre python3 py-pip wget git bc \
+RUN apt-get install --no-cache curl bash openjdk8-jre python3 py-pip wget git bc \
     #      && chmod +x *.sh \
     && mkdir /opt \
     && cd /opt \
@@ -47,7 +47,7 @@ RUN cd /opt/spark/jars \
     && wget https://storage.googleapis.com/hadoop-lib/gcs/gcs-connector-hadoop2-latest.jar
 
 # Clean packages
-RUN apk del curl git wget
+
 
 WORKDIR /app
 COPY target/scala-2.11/NLPIR-2019-assembly-1.3.jar /app
