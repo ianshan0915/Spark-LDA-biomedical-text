@@ -15,7 +15,7 @@ RUN apk add --no-cache curl bash openjdk8-jre python3 py-pip wget \
     && rm spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz
 
 # Install SCALA
-RUN apk add --no-cache --virtual=.build-dependencies ca-certificates \
+RUN apk add --no-cache --virtual=.build-dependencies ca-certificates sbt \
     && apk add --no-cache bash \
     && cd "/tmp" \
     && wget "https://downloads.typesafe.com/scala/${SCALA_VERSION}/scala-${SCALA_VERSION}.tgz"  \
