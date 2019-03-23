@@ -4,6 +4,7 @@ FROM alpine:3.8
 ENV SPARK_VERSION=2.4.0
 ENV HADOOP_VERSION=2.7
 ENV SCALA_VERSION=2.12.1 SCALA_HOME=/usr/share/scala
+ENV SBT_VERSUIB=1.2.8
 
 RUN apk add --no-cache curl bash openjdk8-jre python3 py-pip wget git \
     #      && chmod +x *.sh \
@@ -28,7 +29,7 @@ RUN apk add --no-cache --virtual=.build-dependencies ca-certificates \
     && rm -rf "/tmp/"* \
     && update-ca-certificates \
     && cd /opt \
-    && wget https://github.com/sbt/sbt/releases/download/v$SBT_VERSION/sbt-$SBT_VERSION.tgz \
+    && wget https://piccolo.link/sbt-$SBT_VERSION.tgz \
     && tar xfz - -C /usr/local \
     && $(mv /usr/local/sbt-launcher-packaging-$SBT_VERSION /usr/local/sbt || true) \
     && ln -s /usr/local/sbt/bin/* /usr/local/bin/  \
