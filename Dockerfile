@@ -1,14 +1,15 @@
-FROM alpine:3.8
+FROM openjdk:11.0.2
 
 
 ENV SPARK_VERSION=2.4.0
 ENV HADOOP_VERSION=2.7
-ENV SCALA_VERSION=2.12.1 SCALA_HOME=/usr/share/scala
+ENV SCALA_VERSION=2.12.1
+ENV SCALA_HOME=/usr/share/scala
 ENV SBT_VERSION=1.2.8
 ENV SBT_HOME=/usr/local/sbt
 ENV PATH ${PATH}:${SBT_HOME}/bin
 
-RUN apk add --no-cache curl bash openjdk8-jre python3 py-pip wget git bc \
+RUN apk-get install --no-cache curl bash openjdk8-jre python3 py-pip wget git bc \
     #      && chmod +x *.sh \
     && mkdir /opt \
     && cd /opt \
@@ -30,12 +31,13 @@ RUN apk add --no-cache curl bash openjdk8-jre python3 py-pip wget git bc \
 #    && apk del .build-dependencies \
 #    && rm -rf "/tmp/"* \
 #    && update-ca-certificates \
-RUN cd /opt \
-    && wget https://sbt-downloads.cdnedge.bluemix.net/releases/v$SBT_VERSION/sbt-$SBT_VERSION.tgz \
-    && mkdir -p $SBT_HOME \
-    && tar xzf sbt-$SBT_VERSION.tgz \
-    && ls -l \
-    && mv /opt/sbt $SBT_HOME \
+RUN \
+  curl -L -o sbt-$SBT_VERSION.deb https://dl.bintray.com/sbt/debian/sbt-$SBT_VERSION.deb && \
+  dpkg -i sbt-$SBT_VERSION.deb && \
+  rm sbt-$SBT_VERSION.deb && \
+  apt-get update && \
+  apt-get install sbt
+
     && cd /opt \
     && git clone https://gitlab.com/wangxisea/spark-lda-biomedical-text.git \
     && cd spark-lda-biomedical-text \
