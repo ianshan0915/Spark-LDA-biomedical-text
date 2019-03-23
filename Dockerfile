@@ -33,7 +33,7 @@ RUN apk add --no-cache --virtual=.build-dependencies ca-certificates \
     && cd /opt \
     && wget https://sbt-downloads.cdnedge.bluemix.net/releases/v$SBT_VERSION/sbt-$SBT_VERSION.tgz \
     && mkdir -p $SBT_HOME \
-    && tar xfz -C $SBT_HOME --strip-components=1 \
+    && tar xfz -C $SBT_HOME --strip-components=1 sbt-$SBT_VERSION.tgz \
     && apk del curl git wget
 
 # Dwonload gcs connector
