@@ -19,6 +19,7 @@ RUN cd /opt/spark/jars \
 
 
 WORKDIR /app
+RUN sbt assembly
 COPY target/scala-2.11/NLPIR-2019-assembly-1.3.jar /app
 
 ENV SPARK_HOME=/opt/spark
