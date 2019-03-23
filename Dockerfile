@@ -35,7 +35,7 @@ RUN cd /opt \
     && mkdir -p $SBT_HOME \
     && tar xzf sbt-$SBT_VERSION.tgz \
     && ls -l \
-    && mv /opt/sbt-$SBT_VERSION $SBT_HOME \
+    && mv /opt/sbt $SBT_HOME \
     && apk del curl git wget
 
 # Dwonload gcs connector
