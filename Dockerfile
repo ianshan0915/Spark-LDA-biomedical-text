@@ -27,7 +27,7 @@ RUN apk add --no-cache --virtual=.build-dependencies ca-certificates \
     && apk del .build-dependencies \
     && rm -rf "/tmp/"* \
     && update-ca-certificates \
-    && cd /opt
+    && cd /opt \
     && wget https://github.com/sbt/sbt/releases/download/v$SBT_VERSION/sbt-$SBT_VERSION.tgz \
     && tar xfz - -C /usr/local \
     && $(mv /usr/local/sbt-launcher-packaging-$SBT_VERSION /usr/local/sbt || true) \
