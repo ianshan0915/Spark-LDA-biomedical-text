@@ -35,17 +35,15 @@ RUN cd /opt \
     && mkdir -p $SBT_HOME \
     && tar xzf sbt-$SBT_VERSION.tgz \
     && ls -l \
-    && mv /opt/sbt $SBT_HOME
+    && mv /opt/sbt $SBT_HOME \
+    && cd /opt \
+    && git clone https://gitlab.com/wangxisea/spark-lda-biomedical-text.git \
+    && cd spark-lda-biomedical-text \
+    && sbt assembly
 
 # Dwonload gcs connector
 RUN cd /opt/spark/jars \
     && wget https://storage.googleapis.com/hadoop-lib/gcs/gcs-connector-hadoop2-latest.jar
-
-# Build jar
-RUN cd /opt \
-    && git clone https://gitlab.com/wangxisea/spark-lda-biomedical-text.git \
-    && cd spark-lda-biomedical-text \
-    && sbt assembly
 
 # Clean packages
 RUN apk del curl git wget
