@@ -5,7 +5,7 @@ ENV SPARK_VERSION=2.4.0
 ENV HADOOP_VERSION=2.7
 ENV SCALA_VERSION=2.12.1 SCALA_HOME=/usr/share/scala
 
-RUN apk add --no-cache curl bash openjdk8-jre python3 py-pip wget \
+RUN apk add --no-cache curl bash openjdk8-jre python3 py-pip wget git \
     #      && chmod +x *.sh \
     && mkdir /opt \
     && cd /opt \
@@ -15,7 +15,7 @@ RUN apk add --no-cache curl bash openjdk8-jre python3 py-pip wget \
     && rm spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz
 
 # Install SCALA
-RUN apk add --no-cache --virtual=.build-dependencies ca-certificates git \
+RUN apk add --no-cache --virtual=.build-dependencies ca-certificates \
     && apk add --no-cache bash \
     && cd "/tmp" \
     && wget "https://downloads.typesafe.com/scala/${SCALA_VERSION}/scala-${SCALA_VERSION}.tgz"  \
