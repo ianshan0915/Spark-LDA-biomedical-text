@@ -1,6 +1,6 @@
 stages:
-  - Build
-  - Deploy
+  - build
+  - deploy
 
 
 Build:
