@@ -5,6 +5,8 @@ ENV SPARK_VERSION=2.4.0
 ENV HADOOP_VERSION=2.7
 ENV SCALA_VERSION=2.12.1 SCALA_HOME=/usr/share/scala
 ENV SBT_VERSION=1.2.8
+ENV SBT_HOME=/usr/local/sbt
+ENV PATH ${PATH}:${SBT_HOME}/bin
 
 RUN apk add --no-cache curl bash openjdk8-jre python3 py-pip wget git \
     #      && chmod +x *.sh \
@@ -15,7 +17,7 @@ RUN apk add --no-cache curl bash openjdk8-jre python3 py-pip wget git \
     && mv /opt/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION} /opt/spark \
     && rm spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz
 
-# Install SCALA
+# Install SCALA and sbt
 RUN apk add --no-cache --virtual=.build-dependencies ca-certificates \
     && apk add --no-cache bash \
     && cd "/tmp" \
@@ -29,10 +31,9 @@ RUN apk add --no-cache --virtual=.build-dependencies ca-certificates \
     && rm -rf "/tmp/"* \
     && update-ca-certificates \
     && cd /opt \
-    && wget https://piccolo.link/sbt-$SBT_VERSION.tgz \
-    && tar xfz - -C /usr/local \
-    && $(mv /usr/local/sbt-launcher-packaging-$SBT_VERSION /usr/local/sbt || true) \
-    && ln -s /usr/local/sbt/bin/* /usr/local/bin/  \
+    && wget https://sbt-downloads.cdnedge.bluemix.net/releases/v$SBT_VERSION/sbt-$SBT_VERSION.tgz \
+    && mkdir -p $SBT_HOME \
+    && tar xfz -C $SBT_HOME --strip-components=1 \
     && apk del curl git wget
 
 # Dwonload gcs connector
