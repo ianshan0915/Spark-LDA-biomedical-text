@@ -3,6 +3,7 @@ FROM alpine:3.8
 
 ENV SPARK_VERSION=2.4.0
 ENV HADOOP_VERSION=2.7
+ENV SCALA_VERSION=2.12.1 SCALA_HOME=/usr/share/scala
 
 RUN apk add --no-cache curl bash openjdk8-jre python3 py-pip wget \
     #      && chmod +x *.sh \
@@ -12,6 +13,19 @@ RUN apk add --no-cache curl bash openjdk8-jre python3 py-pip wget \
     && tar -xvzf spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz \
     && mv /opt/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION} /opt/spark \
     && rm spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz
+
+# Install SCALA
+RUN apk add --no-cache --virtual=.build-dependencies ca-certificates \
+    && apk add --no-cache bash \
+    && cd "/tmp" \
+    && wget "https://downloads.typesafe.com/scala/${SCALA_VERSION}/scala-${SCALA_VERSION}.tgz"  \
+    && tar xzf "scala-${SCALA_VERSION}.tgz"  \
+    && mkdir "${SCALA_HOME}"  \
+    && rm "/tmp/scala-${SCALA_VERSION}/bin/"*.bat \
+    && mv "/tmp/scala-${SCALA_VERSION}/bin" "/tmp/scala-${SCALA_VERSION}/lib" "${SCALA_HOME}"  \
+    && ln -s "${SCALA_HOME}/bin/"* "/usr/bin/"  \
+    && apk del .build-dependencies \
+    && rm -rf "/tmp/"*
 
 # Dwonload gcs connector
 RUN cd /opt/spark/jars \

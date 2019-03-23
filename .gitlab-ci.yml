@@ -1,15 +1,6 @@
 stages:
-  - build
   - deploy
 
-
-Build:
-  stage: build
-  only:
-  - develop
-  image: spikerlabs/scala-sbt
-  script:
-    - sbt assembly
 
 
 Deploy:
