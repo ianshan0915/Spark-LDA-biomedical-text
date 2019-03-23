@@ -16,9 +16,9 @@ Deploy:
   stage: deploy
   only:
   - develop
-  image: docker:git
+  image: docker:dind
   script:
     - docker login -u $cr_username -p $cr_password registry.gitlab.com
-    - docker start
+    - dockerd
     - docker build -t wangxisea/bionlp:latest .
     - docker push wangxisea/bionlp:latest
