@@ -33,8 +33,8 @@ RUN apk add --no-cache curl bash openjdk8-jre python3 py-pip wget git bc \
 #    && update-ca-certificates \
 RUN cd /opt \
     && wget https://sbt-downloads.cdnedge.bluemix.net/releases/v$SBT_VERSION/sbt-$SBT_VERSION.tgz \
-    && tar xzf sbt-$SBT_VERSION.tgz \
-    && sbt sbtVersion
+    && tar xzf sbt-$SBT_VERSION.tgz
+#    && sbt sbtVersion
 #    && cd /opt \
 #    && git clone https://gitlab.com/wangxisea/spark-lda-biomedical-text.git \
 #    && cd spark-lda-biomedical-text \
