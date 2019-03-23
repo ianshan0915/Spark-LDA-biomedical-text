@@ -4,7 +4,7 @@ FROM alpine:3.8
 ENV SPARK_VERSION=2.4.0
 ENV HADOOP_VERSION=2.7
 ENV SCALA_VERSION=2.12.1 SCALA_HOME=/usr/share/scala
-ENV SBT_VERSUIB=1.2.8
+ENV SBT_VERSION=1.2.8
 
 RUN apk add --no-cache curl bash openjdk8-jre python3 py-pip wget git \
     #      && chmod +x *.sh \
