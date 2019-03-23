@@ -15,7 +15,7 @@ RUN apk add --no-cache curl bash openjdk8-jre python3 py-pip wget \
     && rm spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz
 
 # Install SCALA
-RUN apk add --no-cache --virtual=.build-dependencies ca-certificates sbt \
+RUN apk add --no-cache --virtual=.build-dependencies ca-certificates git \
     && apk add --no-cache bash \
     && cd "/tmp" \
     && wget "https://downloads.typesafe.com/scala/${SCALA_VERSION}/scala-${SCALA_VERSION}.tgz"  \
@@ -31,9 +31,13 @@ RUN apk add --no-cache --virtual=.build-dependencies ca-certificates sbt \
 RUN cd /opt/spark/jars \
     && wget https://storage.googleapis.com/hadoop-lib/gcs/gcs-connector-hadoop2-latest.jar
 
+# Build jar
+RUN cd /opt \
+    && git clone https://gitlab.com/wangxisea/spark-lda-biomedical-text.git \
+    && cd spark-lda-biomedical-text \
+    && sbt assembly
 
 WORKDIR /app
-RUN sbt assembly
 COPY target/scala-2.11/NLPIR-2019-assembly-1.3.jar /app
 
 ENV SPARK_HOME=/opt/spark
