@@ -33,7 +33,8 @@ RUN apk add --no-cache curl bash openjdk8-jre python3 py-pip wget git \
 RUN cd /opt \
     && wget https://sbt-downloads.cdnedge.bluemix.net/releases/v$SBT_VERSION/sbt-$SBT_VERSION.tgz \
     && mkdir -p $SBT_HOME \
-    && tar xzf -C $SBT_HOME --strip-components=1 sbt-$SBT_VERSION.tgz \
+    && tar xzf sbt-$SBT_VERSION.tgz \
+    && mv /opt/sbt-$SBT_VERSION $SBT_HOME
     && apk del curl git wget
 
 # Dwonload gcs connector
