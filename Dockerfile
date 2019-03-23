@@ -18,23 +18,23 @@ RUN apk add --no-cache curl bash openjdk8-jre python3 py-pip wget git \
     && rm spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz
 
 # Install SCALA and sbt
-RUN apk add --no-cache --virtual=.build-dependencies ca-certificates \
-    && apk add --no-cache bash \
-    && cd "/tmp" \
-    && wget "https://downloads.typesafe.com/scala/${SCALA_VERSION}/scala-${SCALA_VERSION}.tgz"  \
-    && tar xzf "scala-${SCALA_VERSION}.tgz"  \
-    && mkdir "${SCALA_HOME}"  \
-    && rm "/tmp/scala-${SCALA_VERSION}/bin/"*.bat \
-    && mv "/tmp/scala-${SCALA_VERSION}/bin" "/tmp/scala-${SCALA_VERSION}/lib" "${SCALA_HOME}"  \
-    && ln -s "${SCALA_HOME}/bin/"* "/usr/bin/"  \
-    && apk del .build-dependencies \
-    && rm -rf "/tmp/"* \
-    && update-ca-certificates \
-    && cd /opt \
-    && wget https://sbt-downloads.cdnedge.bluemix.net/releases/v$SBT_VERSION/sbt-$SBT_VERSION.tgz \
-    && mkdir -p $SBT_HOME \
-    && tar xfz -C $SBT_HOME --strip-components=1 sbt-$SBT_VERSION.tgz \
-    && apk del curl git wget
+#RUN apk add --no-cache --virtual=.build-dependencies ca-certificates \
+#    && apk add --no-cache bash \
+#    && cd "/tmp" \
+#    && wget "https://downloads.typesafe.com/scala/${SCALA_VERSION}/scala-${SCALA_VERSION}.tgz"  \
+#    && tar xzf "scala-${SCALA_VERSION}.tgz"  \
+#    && mkdir "${SCALA_HOME}"  \
+#    && rm "/tmp/scala-${SCALA_VERSION}/bin/"*.bat \
+#    && mv "/tmp/scala-${SCALA_VERSION}/bin" "/tmp/scala-${SCALA_VERSION}/lib" "${SCALA_HOME}"  \
+#    && ln -s "${SCALA_HOME}/bin/"* "/usr/bin/"  \
+#    && apk del .build-dependencies \
+#    && rm -rf "/tmp/"* \
+#    && update-ca-certificates \
+RUN cd /opt
+RUN wget https://sbt-downloads.cdnedge.bluemix.net/releases/v$SBT_VERSION/sbt-$SBT_VERSION.tgz
+RUN mkdir -p $SBT_HOME
+RUN tar xfz -C $SBT_HOME --strip-components=1 sbt-$SBT_VERSION.tgz
+RUN apk del curl git wget
 
 # Dwonload gcs connector
 RUN cd /opt/spark/jars \
