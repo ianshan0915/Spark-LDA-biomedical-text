@@ -24,13 +24,13 @@ RUN apk add --no-cache --virtual=.build-dependencies ca-certificates bc \
     && rm "/tmp/scala-${SCALA_VERSION}/bin/"*.bat \
     && mv "/tmp/scala-${SCALA_VERSION}/bin" "/tmp/scala-${SCALA_VERSION}/lib" "${SCALA_HOME}"  \
     && ln -s "${SCALA_HOME}/bin/"* "/usr/bin/"  \
+    && apk del .build-dependencies \
     && rm -rf "/tmp/"* \
     && update-ca-certificates \
     && curl -fsL https://github.com/sbt/sbt/releases/download/v$SBT_VERSION/sbt-$SBT_VERSION.tgz | tar xfz - -C /usr/local \
     && $(mv /usr/local/sbt-launcher-packaging-$SBT_VERSION /usr/local/sbt || true) \
     && ln -s /usr/local/sbt/bin/* /usr/local/bin/  \
-    && apk del .build-dependencies \
-    && apk del curl git wget \
+    && apk del curl git wget
 
 # Dwonload gcs connector
 RUN cd /opt/spark/jars \
