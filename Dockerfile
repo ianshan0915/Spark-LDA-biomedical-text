@@ -34,6 +34,7 @@ RUN cd /opt \
     && wget https://sbt-downloads.cdnedge.bluemix.net/releases/v$SBT_VERSION/sbt-$SBT_VERSION.tgz \
     && mkdir -p $SBT_HOME \
     && tar xzf sbt-$SBT_VERSION.tgz \
+    && ls -l \
     && mv /opt/sbt-$SBT_VERSION $SBT_HOME \
     && apk del curl git wget
 
