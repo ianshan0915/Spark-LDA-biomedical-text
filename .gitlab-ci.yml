@@ -19,6 +19,6 @@ Deploy:
   image: docker:git
   script:
     - docker login -u $cr_username -p $cr_password registry.gitlab.com
-    - service docker start
+    - docker start
     - docker build -t wangxisea/bionlp:latest .
     - docker push wangxisea/bionlp:latest
