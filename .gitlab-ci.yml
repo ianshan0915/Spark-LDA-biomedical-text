@@ -1,5 +1,3 @@
-image: spikerlabs/scala-sbt
-
 stages:
   - Build
   - Deploy
@@ -8,6 +6,7 @@ stages:
 Build:
   only:
   - develop
+  image: spikerlabs/scala-sbt
   script:
     - git clone git@gitlab.dev.terastrm.net:${CI_PROJECT_PATH}.git
     - cd ${CI_PROJECT_NAME}
