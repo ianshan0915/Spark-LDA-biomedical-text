@@ -18,7 +18,8 @@ Deploy:
   - develop
   image: docker:dind
   script:
-    - docker login -u $cr_username -p $cr_password registry.gitlab.com
+#    - docker login -u $cr_username -p $cr_password registry.gitlab.com
+    - docker run --rm -it --privileged docker:stable-dind docker login -u $cr_username -p $cr_password registry.gitlab.com
     - dockerd
     - docker build -t wangxisea/bionlp:latest .
     - docker push wangxisea/bionlp:latest
