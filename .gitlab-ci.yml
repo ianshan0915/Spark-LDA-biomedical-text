@@ -17,7 +17,12 @@ Deploy:
   only:
   - develop
   image: docker:latest
+  services:
+  - docker:dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_DRIVER: overlay2
   script:
-    - docker build -t wangxisea/bionlp:latest .
+    - docker build -t registry.gitlab.com/wangxisea/spark-lda-biomedical-text .
     - docker login -u $cr_username -p $cr_password registry.gitlab.com
-    - docker push wangxisea/bionlp:latest
+    - docker push registry.gitlab.com/wangxisea/spark-lda-biomedical-text
