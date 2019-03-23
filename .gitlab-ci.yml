@@ -3,13 +3,13 @@ stages:
   - deploy
 
 
-Build:
-  stage: build
-  only:
-  - develop
-  image: spikerlabs/scala-sbt
-  script:
-    - sbt assembly
+#Build:
+#  stage: build
+#  only:
+#  - develop
+#  image: spikerlabs/scala-sbt
+#  script:
+#    - sbt assembly
 
 
 Deploy:
@@ -18,6 +18,6 @@ Deploy:
   - develop
   image: jimmyadaro/gitlab-ci-cd:latest
   script:
-    - docker login registry.gitlab.com
+    - docker login registry.gitlab.com --username ${cr_username} --password ${cr_password}
     - docker build -t wangxisea/bionlp:latest .
     - docker push wangxisea/bionlp:latest
