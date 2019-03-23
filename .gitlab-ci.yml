@@ -16,6 +16,8 @@ Deploy:
   stage: deploy
   only:
   - develop
+  image: jimmyadaro/gitlab-ci-cd:latest
   script:
+    - docker login registry.gitlab.com
     - docker build -t wangxisea/bionlp:latest .
     - docker push wangxisea/bionlp:latest
