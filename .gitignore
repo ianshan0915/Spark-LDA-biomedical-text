@@ -7,7 +7,5 @@
 .DS_Store
 
 .idea
-project/*/
+project/
 target/
-
-secrets/
