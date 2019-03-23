@@ -48,6 +48,6 @@ RUN cd /opt/spark/jars \
 RUN apk del curl git wget
 
 WORKDIR /app
-COPY target/scala-2.11/NLPIR-2019-assembly-1.3.jar /app
+COPY /opr/spark-lda-biomedical-text/target/scala-2.11/NLPIR-2019-assembly-1.3.jar /app
 
 ENV SPARK_HOME=/opt/spark
