@@ -1,0 +1,22 @@
+image: spikerlabs/scala-sbt
+
+stages:
+  - Build
+  - Deploy
+
+
+Build:
+  only:
+  - develop
+  script:
+    - git clone git@gitlab.dev.terastrm.net:${CI_PROJECT_PATH}.git
+    - cd ${CI_PROJECT_NAME}
+    - sbt assembly
+
+
+Deploy:
+  only:
+  - develop
+  script:
+    - docker build -t wangxisea/bionlp:latest .
+    - docker push wangxisea/bionlp:latest
