@@ -9,7 +9,7 @@ ENV SBT_VERSION=1.2.8
 ENV SBT_HOME=/usr/local/sbt
 ENV PATH ${PATH}:${SBT_HOME}/bin
 
-RUN apt-get install --no-cache curl bash openjdk8-jre python3 py-pip wget git bc \
+RUN apt-get install -y curl bash openjdk8-jre python3 py-pip wget git bc \
     #      && chmod +x *.sh \
     && mkdir /opt \
     && cd /opt \
