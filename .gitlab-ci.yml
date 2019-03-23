@@ -16,7 +16,7 @@ Deploy:
   stage: deploy
   only:
   - develop
-  image: jimmyadaro/gitlab-ci-cd:latest
+  image: docker: git
   script:
     - docker login registry.gitlab.com --username ${cr_username} --password ${cr_password}
     - docker build -t wangxisea/bionlp:latest .
