@@ -9,6 +9,7 @@ ENV SBT_VERSION=1.2.8
 ENV SBT_HOME=/usr/local/sbt
 ENV PATH=${PATH}:/opt/sbt/bin
 
+WORKDIR /app
 RUN apk add --no-cache curl bash openjdk8-jre python3 py-pip wget git bc nss \
     #      && chmod +x *.sh \
     && mkdir /opt \
@@ -38,7 +39,8 @@ RUN cd /opt \
     && cd /opt \
     && git clone https://gitlab.com/wangxisea/spark-lda-biomedical-text.git \
     && cd spark-lda-biomedical-text \
-    && sbt assembly
+    && sbt assembly \
+    && mv /opt/spark-lda-biomedical-text/target/scala-2.11/NLPIR-2019-assembly-1.3.jar /app
 
 # Dwonload gcs connector
 RUN cd /opt/spark/jars \
@@ -46,8 +48,5 @@ RUN cd /opt/spark/jars \
 
 # Clean packages
 RUN apk del curl git wget
-
-WORKDIR /app
-COPY /opt/spark-lda-biomedical-text/target/scala-2.11/NLPIR-2019-assembly-1.3.jar /app
 
 ENV SPARK_HOME=/opt/spark
