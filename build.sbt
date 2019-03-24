@@ -1,6 +1,6 @@
-name := "NLPIR-2019"
+name := "lda-medium"
 
-version := "1.3"
+version := "1.0"
 
 scalaVersion := "2.11.12"
 
