@@ -24,8 +24,6 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{Row, SparkSession, DataFrame}
 import org.apache.spark.sql.functions.{input_file_name, col, concat_ws, collect_list, split, regexp_replace}
 
-import com.johnsnowlabs.nlp.base._
-import com.johnsnowlabs.nlp.annotator._
 
 object LabelBiodoc {
 
@@ -231,55 +229,6 @@ object LabelBiodoc {
           .toDF("code", "docs")
           // .withColumn("docs", regexp_replace(col("docs"), """(['?!:;-=]|\b{IsDigit}{4}\b""", " "))
     }
-    // val df_splits = df.randomSplit(Array(1-trainSize, trainSize), seed=1230)
-    // val df_sample = df_splits(0)
-
-    // use spark-nlp pipeline to clean up the text
-    // val documentAssembler = new DocumentAssembler()
-    //   .setInputCol("docs")
-    //   .setOutputCol("document")
-    // val sentenceDetector = new SentenceDetector()
-    //   .setInputCols(Array("document"))
-    //   .setOutputCol("sentence")
-    // val regexTokenizer = new Tokenizer()
-    //   .setInputCols("sentence")
-    //   .setOutputCol("token")
-    // val normalizer = new Normalizer()
-    //   .setInputCols("token")
-    //   .setOutputCol("normalized")
-    // // NerDLModel.pretrained() does not work
-    // val ner = NerDLModel.load(pretrainedFolder)
-    //   .setInputCols("normalized", "document")
-    //   .setOutputCol("ner")
-    // val nerConverter = new NerConverter()
-    //   .setInputCols("document", "normalized", "ner")
-    //   .setOutputCol("ner_converter")
-    // val finisher = new Finisher()
-    //   .setInputCols("ner_converter")
-    //   .setCleanAnnotations(true)
-    // val stemmer = new Stemmer()
-    //   .setInputCols("token")
-    //   .setOutputCol("stem")
-    // val normalizer = new Normalizer()
-    //   .setInputCols("stem")
-    //   .setOutputCol("normalized")
-    //   .setPatterns(Array("\b[^A-Za-z\\s]{1,2}\b"))
-    // val finisher = new Finisher()
-    //   .setInputCols("normalized")
-    //   .setCleanAnnotations(true)
-    // // nlp pipeline using spark-nlp from the johnsnow labs
-    // val sparknlp_pipeline = new Pipeline()
-    //     .setStages(Array(
-    //         documentAssembler,
-    //         sentenceDetector,
-    //         regexTokenizer,
-    //         stemmer,
-    //         normalizer,
-    //         // ner,
-    //         // nerConverter,
-    //         finisher
-    //     ))
-    // val df_tmp = sparknlp_pipeline.fit(Seq.empty[String].toDS.toDF("docs")).transform(df_sample)
 
     // remove stop words, start to use the built-in transformers
     // add customerized stop words
