@@ -30,7 +30,10 @@ RUN cd /opt \
     && git clone https://gitlab.com/wangxisea/${CODEBASE}.git \
     && cd ${CODEBASE} \
     && sbt assembly \
-    && mv /opt/${CODEBASE}/target/scala-2.11/NLPIR-2019-assembly-1.3.jar /app
+    && mv /opt/${CODEBASE}/target/scala-2.11/NLPIR-2019-assembly-1.3.jar /app \
+    && rm /opt/sbt-$SBT_VERSION.tgz \
+    && rm -rf /opt/sbt \
+    && rm -rf /opt/${CODEBASE}
 
 # Dwonload gcs connector
 RUN cd /opt/spark/jars \
@@ -38,12 +41,5 @@ RUN cd /opt/spark/jars \
 
 # Clean packages
 RUN apk del curl git wget
-
-# Clean sbt
-RUN rm -rf /opt/sbt \
-    && rm /opt/sbt-$SBT_VERSION.tgz
-
-# Clean source code
-RUN rm -rf /opt/${CODEBASE}
 
 ENV SPARK_HOME=/opt/spark
