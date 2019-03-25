@@ -3,10 +3,7 @@ FROM alpine:3.8
 
 ENV SPARK_VERSION=2.4.0
 ENV HADOOP_VERSION=2.7
-ENV SCALA_VERSION=2.12.1
-ENV SCALA_HOME=/usr/share/scala
 ENV SBT_VERSION=1.2.8
-ENV SBT_HOME=/usr/local/sbt
 ENV PATH=${PATH}:/opt/sbt/bin
 ARG CODEBASE=spark-lda-biomedical-text
 
