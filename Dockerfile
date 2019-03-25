@@ -8,10 +8,12 @@ ENV SCALA_HOME=/usr/share/scala
 ENV SBT_VERSION=1.2.8
 ENV SBT_HOME=/usr/local/sbt
 ENV PATH=${PATH}:/opt/sbt/bin
+ARG CODEBASE=spark-lda-biomedical-text
 
 WORKDIR /app
+
+# Install Spark
 RUN apk add --no-cache curl bash openjdk8-jre python3 py-pip wget git bc nss \
-    #      && chmod +x *.sh \
     && mkdir /opt \
     && cd /opt \
     && wget http://apache.mirror.iphh.net/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz \
@@ -19,28 +21,16 @@ RUN apk add --no-cache curl bash openjdk8-jre python3 py-pip wget git bc nss \
     && mv /opt/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION} /opt/spark \
     && rm spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz
 
-# Install SCALA and sbt
-#RUN apk add --no-cache --virtual=.build-dependencies ca-certificates \
-#    && apk add --no-cache bash \
-#    && cd "/tmp" \
-#    && wget "https://downloads.typesafe.com/scala/${SCALA_VERSION}/scala-${SCALA_VERSION}.tgz"  \
-#    && tar xzf "scala-${SCALA_VERSION}.tgz"  \
-#    && mkdir "${SCALA_HOME}"  \
-#    && rm "/tmp/scala-${SCALA_VERSION}/bin/"*.bat \
-#    && mv "/tmp/scala-${SCALA_VERSION}/bin" "/tmp/scala-${SCALA_VERSION}/lib" "${SCALA_HOME}"  \
-#    && ln -s "${SCALA_HOME}/bin/"* "/usr/bin/"  \
-#    && apk del .build-dependencies \
-#    && rm -rf "/tmp/"* \
-#    && update-ca-certificates \
+# Install sbt and build the jar from source code
 RUN cd /opt \
     && wget https://sbt-downloads.cdnedge.bluemix.net/releases/v$SBT_VERSION/sbt-$SBT_VERSION.tgz \
     && tar xzf sbt-$SBT_VERSION.tgz \
     && sbt sbtVersion \
     && cd /opt \
-    && git clone https://gitlab.com/wangxisea/spark-lda-biomedical-text.git \
-    && cd spark-lda-biomedical-text \
+    && git clone https://gitlab.com/wangxisea/${CODEBASE}.git \
+    && cd ${CODEBASE} \
     && sbt assembly \
-    && mv /opt/spark-lda-biomedical-text/target/scala-2.11/NLPIR-2019-assembly-1.3.jar /app
+    && mv /opt/${CODEBASE}/target/scala-2.11/NLPIR-2019-assembly-1.3.jar /app
 
 # Dwonload gcs connector
 RUN cd /opt/spark/jars \
@@ -48,5 +38,12 @@ RUN cd /opt/spark/jars \
 
 # Clean packages
 RUN apk del curl git wget
+
+# Clean sbt
+RUN rm -rf /opt/sbt \
+    && rm /opt/sbt-$SBT_VERSION.tgz
+
+# Clean source code
+RUN rm -rf /opt/${CODEBASE}
 
 ENV SPARK_HOME=/opt/spark
