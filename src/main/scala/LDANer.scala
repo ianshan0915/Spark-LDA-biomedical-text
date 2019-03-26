@@ -17,7 +17,7 @@ import scopt.OptionParser
 import org.apache.spark.ml.Pipeline
 import org.apache.spark.ml.feature.{CountVectorizer, CountVectorizerModel, RegexTokenizer, StopWordsRemover}
 import org.apache.spark.ml.linalg.{Vector => MLVector}
-import org.apache.spark.ml.clustering.{DistributedLDAModel, EMLDAOptimizer, LDA, OnlineLDAOptimizer}
+import org.apache.spark.mllib.clustering.{DistributedLDAModel, EMLDAOptimizer, LDA, OnlineLDAOptimizer}
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{Row, SparkSession, DataFrame}
@@ -26,7 +26,7 @@ import org.apache.spark.sql.functions.{input_file_name, col, concat_ws, collect_
 import com.johnsnowlabs.nlp.base._
 import com.johnsnowlabs.nlp.annotator._
 
-object LDAComplex {
+object LDANer {
 
   private case class Params(
       input: String = "",
@@ -203,7 +203,7 @@ object LDAComplex {
 
     // Get corpus of document texts
   
-    val df_raw: DataFrame = spark.read
+    val df: DataFrame = spark.read
       .format("csv")
       .option("header","true")
       .option("delimiter", " ")
@@ -224,6 +224,7 @@ object LDAComplex {
     val normalizer = new Normalizer()
       .setInputCols("token")
       .setOutputCol("normalized")
+
     val ner = NerDLModel.load(pretrainedFolder)
       .setInputCols("normalized", "document")
       .setOutputCol("ner")
@@ -233,18 +234,6 @@ object LDAComplex {
     val finisher = new Finisher()
       .setInputCols("ner_converter")
       .setCleanAnnotations(true)
-
-    val nlp_pipeline = new Pipeline()
-        .setStages(Array(
-            documentAssembler,
-            sentenceDetector,
-            regexTokenizer,
-            normalizer,
-            ner,
-            nerConverter,
-            finisher
-        ))
-    val df = nlp_pipeline.fit(Seq.empty[String].toDS.toDF("docs")).transform(df_raw)
 
     val customizedStopWords: Array[String] = if (stopwordFile.isEmpty) {
       Array.empty[String]
@@ -265,10 +254,19 @@ object LDAComplex {
       .setMaxDF(maxDF)
       .setInputCol("tokens")
       .setOutputCol("features")
-    val pipeline = new Pipeline()
-      .setStages(Array(stopWordsRemover, countVectorizer))
-
-    val model = pipeline.fit(df)
+    val nlp_pipeline = new Pipeline()
+        .setStages(Array(
+            documentAssembler,
+            sentenceDetector,
+            regexTokenizer,
+            normalizer,
+            ner,
+            nerConverter,
+            finisher,
+            stopWordsRemover,
+            countVectorizer
+        ))
+    val model = nlp_pipeline.fit(df)
     val documents = model.transform(df)
       .select("features")
       .rdd
@@ -277,7 +275,7 @@ object LDAComplex {
       .map(_.swap)
 
     (documents,
-      model.stages(1).asInstanceOf[CountVectorizerModel].vocabulary,  // vocabulary
+      model.stages(8).asInstanceOf[CountVectorizerModel].vocabulary,  // vocabulary
       documents.map(_._2.numActives).sum().toLong) // total token count
   }
 }
